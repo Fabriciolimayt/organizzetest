@@ -12,6 +12,10 @@ import Dashboard from "./pages/Dashboard";
 import DashboardLancamentos from "./pages/DashboardLancamentos";
 import DashboardRelatorios from "./pages/DashboardRelatorios";
 import DashboardLimiteGastos from "./pages/DashboardLimiteGastos";
+import DashboardOrcamento from "./pages/DashboardOrcamento";
+import DashboardPlanos from "./pages/DashboardPlanos";
+import DashboardGrupos from "./pages/DashboardGrupos";
+import DashboardWhatsApp from "./pages/DashboardWhatsApp";
 
 const queryClient = new QueryClient();
 
