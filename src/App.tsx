@@ -34,6 +34,10 @@ const App = () => (
             <Route path="lancamentos" element={<DashboardLancamentos />} />
             <Route path="relatorios" element={<DashboardRelatorios />} />
             <Route path="limite-de-gastos" element={<DashboardLimiteGastos />} />
+            <Route path="orcamento" element={<DashboardOrcamento />} />
+            <Route path="planos" element={<DashboardPlanos />} />
+            <Route path="grupos" element={<DashboardGrupos />} />
+            <Route path="whatsapp" element={<DashboardWhatsApp />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
