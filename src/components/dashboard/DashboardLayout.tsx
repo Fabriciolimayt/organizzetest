@@ -6,10 +6,13 @@ import { Progress } from "@/components/ui/progress";
 
 const navLinks = [
   { to: "/dashboard", label: "visão geral", end: true },
+  { to: "/dashboard/orcamento", label: "orçamento" },
   { to: "/dashboard/lancamentos", label: "lançamentos" },
   { to: "/dashboard/relatorios", label: "relatórios" },
-  { to: "/dashboard/limite-de-gastos", label: "limite de gastos" },
-  { to: "/dashboard/conexao-bancaria", label: "conexão bancária" },
+  { to: "/dashboard/planos", label: "planos" },
+  { to: "/dashboard/grupos", label: "grupos" },
+  { to: "/dashboard/whatsapp", label: "whatsapp" },
+  { to: "/dashboard/limite-de-gastos", label: "limites" },
 ];
 
 const DashboardLayout = () => {
