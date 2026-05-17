@@ -7,10 +7,13 @@ import {
   Wallet,
   FileText,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import QuickActionButton from "@/components/dashboard/QuickActionButton";
 import EmptyState from "@/components/dashboard/EmptyState";
+import TourOverlay, { TourStep } from "@/components/dashboard/TourOverlay";
 import {
   Accordion,
   AccordionContent,
@@ -18,9 +21,38 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+const tourSteps: TourStep[] = [
+  { emoji: "👋", title: "Bem-vindo às tuas finanças!", body: "Vamos mostrar-te como funciona em menos de 1 minuto. Podes saltar a qualquer momento." },
+  { emoji: "💰", title: "Define o teu rendimento", body: "Começa aqui. Indica quanto recebes por mês, depois de impostos — é a base de todo o orçamento.", target: '[data-tour="quick-receita"]' },
+  { emoji: "📊", title: "Divide o teu dinheiro", body: "Escolhe como distribuir o teu salário pelas categorias. Usa um plano pronto ou personaliza.", target: '[data-tour="nav-orcamento"]' },
+  { emoji: "📋", title: "Regista despesas fixas", body: "Adiciona despesas mensais fixas — renda, subscrições, ginásio. O dashboard atualiza em tempo real.", target: '[data-tour="quick-despesa"]' },
+  { emoji: "🔀", title: "Planos de orçamento", body: "Simula meses com rendimentos diferentes — freelance, férias. Alterna com um clique.", target: '[data-tour="nav-planos"]' },
+  { emoji: "👥", title: "Orçamento partilhado", body: "Cria um grupo com o teu parceiro, família ou colega de casa. Partilham o mesmo orçamento e despesas.", target: '[data-tour="nav-grupos"]' },
+  { emoji: "📱", title: "Integração WhatsApp", body: "Liga o teu WhatsApp ou vê os registos feitos pelo WhatsApp aqui. Um toque para ligar, uma mensagem para registar.", target: '[data-tour="nav-whatsapp"]' },
+  { emoji: "❓", title: "Precisas de ajuda?", body: "Este botão fica sempre aqui. Clica a qualquer momento para repetir este tutorial do início.", target: '[data-tour="help"]' },
+];
+
 const Dashboard = () => {
+  const [params, setParams] = useSearchParams();
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    if (params.get("tour") === "1") {
+      setTourOpen(true);
+      params.delete("tour");
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams]);
+
+  useEffect(() => {
+    const handler = () => setTourOpen(true);
+    window.addEventListener("organizze:start-tour", handler);
+    return () => window.removeEventListener("organizze:start-tour", handler);
+  }, []);
+
   return (
     <div className="space-y-6">
+      <TourOverlay steps={tourSteps} open={tourOpen} onClose={() => setTourOpen(false)} />
       {/* Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Welcome Card */}
@@ -43,8 +75,12 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <DashboardCard title="Acesso rápido">
           <div className="flex items-center justify-around py-2">
-            <QuickActionButton icon={<ArrowDownCircle size={20} />} label="Despesa" />
-            <QuickActionButton icon={<ArrowUpCircle size={20} />} label="Receita" />
+            <span data-tour="quick-despesa">
+              <QuickActionButton icon={<ArrowDownCircle size={20} />} label="Despesa" />
+            </span>
+            <span data-tour="quick-receita">
+              <QuickActionButton icon={<ArrowUpCircle size={20} />} label="Receita" />
+            </span>
             <QuickActionButton icon={<ArrowLeftRight size={20} />} label="Transf." />
             <QuickActionButton icon={<Download size={20} />} label="Importar" />
           </div>

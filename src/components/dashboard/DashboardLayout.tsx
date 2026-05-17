@@ -33,6 +33,7 @@ const DashboardLayout = () => {
                 key={l.to}
                 to={l.to}
                 end={l.end}
+                data-tour={`nav-${l.to.split("/").pop()}`}
                 className={({ isActive }) =>
                   `px-3 py-1.5 text-sm rounded-md transition-colors ${
                     isActive
@@ -140,10 +141,18 @@ const DashboardLayout = () => {
       </main>
 
       {/* Floating Buttons */}
-      <button className="fixed bottom-6 left-6 w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow border border-border z-40">
+      <button
+        data-tour="help"
+        onClick={() => window.dispatchEvent(new CustomEvent("organizze:start-tour"))}
+        aria-label="Reiniciar tutorial"
+        className="fixed bottom-6 left-6 w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow border border-border z-40"
+      >
         <MessageCircle size={20} className="text-primary" />
       </button>
-      <button className="fixed bottom-6 right-6 bg-foreground text-primary-foreground px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity z-40">
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent("organizze:start-tour"))}
+        className="fixed bottom-6 right-6 bg-foreground text-primary-foreground px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity z-40"
+      >
         <BarChart3 size={16} />
         Primeiros passos
       </button>
