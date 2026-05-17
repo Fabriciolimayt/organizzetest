@@ -35,19 +35,37 @@ const OnboardingWhatsApp = () => {
 
   const valid = validatePhone(country, phone);
 
-  const startVerification = () => {
+  const startVerification = async () => {
     const code = generateVerifyCode();
+    const ddiDigits = country.ddi.replace(/\D/g, "");
+    const fullPhone = ddiDigits + onlyDigits(phone);
     const data = {
       code,
-      phone: onlyDigits(phone),
+      phone: fullPhone,
       countryCode: country.code,
       ddi: country.ddi,
       status: "pending" as const,
       startedAt: Date.now(),
     };
     localStorage.setItem("organizze.waVerification", JSON.stringify(data));
+
+    // Persist the pending link so the webhook can find it
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth?.user) {
+        // upsert by phone
+        await supabase.from("whatsapp_links").upsert(
+          { user_id: auth.user.id, phone: fullPhone, verify_code: code, verified_at: null },
+          { onConflict: "phone" }
+        );
+      }
+    } catch (e) {
+      console.error("save link failed", e);
+    }
     navigate("/onboarding/whatsapp/verificar");
   };
+
 
   const skip = () => navigate("/dashboard?tour=1");
 

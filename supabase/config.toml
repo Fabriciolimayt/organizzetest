@@ -8,3 +8,7 @@ verify_jwt = true
 
 [functions.monthly-summary]
 verify_jwt = true
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+

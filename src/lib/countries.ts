@@ -14,7 +14,7 @@ export const WA_COUNTRIES: WaCountry[] = [
   { code: "MZ", flag: "🇲🇿", ddi: "+258", name: "Moçambique", placeholder: "84 123 4567", minDigits: 9 },
 ];
 
-export const WA_BOT_NUMBER = "16812765536";
+export const WA_BOT_NUMBER = "14155238886"; // Twilio WhatsApp Sandbox number
 
 export const countryForCurrency = (currency: string): WaCountry => {
   const map: Record<string, WaCountry["code"]> = {

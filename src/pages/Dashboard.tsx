@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+
 import {
   ArrowRight,
   Plus,
@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import TourOverlay, { TourStep } from "@/components/dashboard/TourOverlay";
+// Tour handled globally by TourProvider
 
 // ---- Types & helpers ----
 type CategoryKey =
@@ -123,21 +123,12 @@ const Donut = ({ data, size = 160 }: { data: { value: number; color: string }[];
   );
 };
 
-// ---- Tour ----
-const tourSteps: TourStep[] = [
-  { emoji: "👋", title: "Bem-vindo às tuas finanças!", body: "Vamos mostrar-te como funciona em menos de 1 minuto." },
-  { emoji: "💰", title: "Define o teu rendimento", body: "Indica quanto recebes por mês — é a base de todo o orçamento.", target: '[data-tour="salario"]' },
-  { emoji: "📊", title: "Divide o teu dinheiro", body: "Escolhe como distribuir pelas categorias.", target: '[data-tour="orcamento"]' },
-  { emoji: "📋", title: "Regista despesas fixas", body: "Adiciona despesas recorrentes — atualiza em tempo real.", target: '[data-tour="despesas"]' },
-  { emoji: "🔀", title: "Planos de orçamento", body: "Cria cenários diferentes e alterna num clique.", target: '[data-tour="planos"]' },
-  { emoji: "👥", title: "Orçamento partilhado", body: "Cria um grupo com o teu parceiro ou família.", target: '[data-tour="nav-grupos"]' },
-  { emoji: "📱", title: "Integração WhatsApp", body: "Liga o WhatsApp e regista despesas por mensagem.", target: '[data-tour="nav-whatsapp"]' },
-  { emoji: "❓", title: "Precisas de ajuda?", body: "Este botão fica sempre aqui para repetir o tutorial.", target: '[data-tour="help"]' },
-];
+// (tour steps now defined in src/components/tour/TourProvider.tsx)
+
 
 const Dashboard = () => {
-  const [params, setParams] = useSearchParams();
-  const [tourOpen, setTourOpen] = useState(false);
+  
+
 
   const [currency] = useLocalState<string>("organizze.currency", "EUR");
   const sym = CURRENCY_SYMBOLS[currency] ?? "€";
@@ -163,19 +154,8 @@ const Dashboard = () => {
   const [expOpen, setExpOpen] = useState(false);
   const [expDraft, setExpDraft] = useState({ name: "", amount: "", category: "subscricoes" as CategoryKey, fixed: true });
 
-  useEffect(() => {
-    if (params.get("tour") === "1") {
-      setTourOpen(true);
-      params.delete("tour");
-      setParams(params, { replace: true });
-    }
-  }, [params, setParams]);
+  // Tour is now handled globally by TourProvider — local triggers removed.
 
-  useEffect(() => {
-    const handler = () => setTourOpen(true);
-    window.addEventListener("organizze:start-tour", handler);
-    return () => window.removeEventListener("organizze:start-tour", handler);
-  }, []);
 
   // Sync expenses when WhatsApp bot adds new ones
   useEffect(() => {
@@ -240,7 +220,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
-      <TourOverlay steps={tourSteps} open={tourOpen} onClose={() => setTourOpen(false)} />
+      {/* Global tour overlay is rendered by TourProvider */}
 
       {/* Greeting */}
       <div className="px-1">
