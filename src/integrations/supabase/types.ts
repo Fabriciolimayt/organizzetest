@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          name: string
+          occurred_at: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          occurred_at?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          occurred_at?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_links: {
+        Row: {
+          created_at: string
+          id: string
+          phone: string
+          user_id: string
+          verified_at: string | null
+          verify_code: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone: string
+          user_id: string
+          verified_at?: string | null
+          verify_code: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone?: string
+          user_id?: string
+          verified_at?: string | null
+          verify_code?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
