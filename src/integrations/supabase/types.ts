@@ -19,8 +19,11 @@ export type Database = {
           amount: number
           category: string
           created_at: string
+          date: string | null
+          description: string | null
           id: string
-          name: string
+          merchant: string | null
+          name: string | null
           occurred_at: string
           source: string
           user_id: string
@@ -29,8 +32,11 @@ export type Database = {
           amount: number
           category?: string
           created_at?: string
+          date?: string | null
+          description?: string | null
           id?: string
-          name: string
+          merchant?: string | null
+          name?: string | null
           occurred_at?: string
           source?: string
           user_id: string
@@ -39,10 +45,52 @@ export type Database = {
           amount?: number
           category?: string
           created_at?: string
+          date?: string | null
+          description?: string | null
           id?: string
-          name?: string
+          merchant?: string | null
+          name?: string | null
           occurred_at?: string
           source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pending_expenses: {
+        Row: {
+          amount: number | null
+          category: string | null
+          created_at: string
+          date: string | null
+          description: string | null
+          id: string
+          merchant: string | null
+          phone: string
+          raw_ai_response: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          id?: string
+          merchant?: string | null
+          phone: string
+          raw_ai_response?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          id?: string
+          merchant?: string | null
+          phone?: string
+          raw_ai_response?: string | null
           user_id?: string
         }
         Relationships: []
@@ -71,6 +119,30 @@ export type Database = {
           user_id?: string
           verified_at?: string | null
           verify_code?: string
+        }
+        Relationships: []
+      }
+      whatsapp_users: {
+        Row: {
+          id: string
+          linked_at: string
+          phone: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          id?: string
+          linked_at?: string
+          phone: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          id?: string
+          linked_at?: string
+          phone?: string
+          user_id?: string
+          verified?: boolean
         }
         Relationships: []
       }
