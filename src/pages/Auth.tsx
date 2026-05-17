@@ -57,6 +57,7 @@ const Auth = () => {
           options: { emailRedirectTo: `${window.location.origin}/dashboard` },
         });
         if (error) throw error;
+        try { localStorage.setItem("organizze.firstRun", "1"); localStorage.removeItem("organizze.tourCompleted"); } catch {}
         toast({ title: "Conta criada", description: "Bem-vindo!" });
         navigate("/onboarding/nome", { replace: true });
       } else {
