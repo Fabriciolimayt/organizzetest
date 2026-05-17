@@ -92,6 +92,25 @@ const OnboardingWhatsAppVerificar = () => {
           Estamos a usar o <strong>Twilio Sandbox</strong> para teste. Demora menos de 1 minuto.
         </p>
 
+        {/* Webhook setup info (one-time, for app owner) */}
+        <details className="rounded-xl border border-dashed border-border bg-card/50 p-3 mb-4 text-sm">
+          <summary className="cursor-pointer font-medium text-foreground">
+            ⚙️ Configuração inicial do Twilio (uma vez só)
+          </summary>
+          <div className="mt-3 space-y-2 text-muted-foreground">
+            <p>No painel Twilio em <strong>Messaging → Try it out → Send a WhatsApp message → Sandbox settings</strong>, no campo <em>"When a message comes in"</em>, cola:</p>
+            <div className="flex items-center justify-between gap-2 p-2 rounded bg-secondary">
+              <code className="font-mono text-xs break-all">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook</code>
+              <button onClick={() => copy(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`, "URL")}
+                className="shrink-0 w-7 h-7 rounded bg-card border border-border flex items-center justify-center">
+                <Copy size={12} />
+              </button>
+            </div>
+            <p className="text-xs">Método: <strong>HTTP POST</strong>.</p>
+          </div>
+        </details>
+
+
         {/* Step 1 */}
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3 mb-4">
           <div className="flex items-center gap-2">
