@@ -7,16 +7,30 @@ import {
   Wallet,
   FileText,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import QuickActionButton from "@/components/dashboard/QuickActionButton";
 import EmptyState from "@/components/dashboard/EmptyState";
+import TourOverlay, { TourStep } from "@/components/dashboard/TourOverlay";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+
+const tourSteps: TourStep[] = [
+  { emoji: "👋", title: "Bem-vindo às tuas finanças!", body: "Vamos mostrar-te como funciona em menos de 1 minuto. Podes saltar a qualquer momento." },
+  { emoji: "💰", title: "Define o teu rendimento", body: "Começa aqui. Indica quanto recebes por mês, depois de impostos — é a base de todo o orçamento.", target: '[data-tour="quick-receita"]' },
+  { emoji: "📊", title: "Divide o teu dinheiro", body: "Escolhe como distribuir o teu salário pelas categorias. Usa um plano pronto ou personaliza.", target: '[data-tour="nav-orcamento"]' },
+  { emoji: "📋", title: "Regista despesas fixas", body: "Adiciona despesas mensais fixas — renda, subscrições, ginásio. O dashboard atualiza em tempo real.", target: '[data-tour="quick-despesa"]' },
+  { emoji: "🔀", title: "Planos de orçamento", body: "Simula meses com rendimentos diferentes — freelance, férias. Alterna com um clique.", target: '[data-tour="nav-planos"]' },
+  { emoji: "👥", title: "Orçamento partilhado", body: "Cria um grupo com o teu parceiro, família ou colega de casa. Partilham o mesmo orçamento e despesas.", target: '[data-tour="nav-grupos"]' },
+  { emoji: "📱", title: "Integração WhatsApp", body: "Liga o teu WhatsApp ou vê os registos feitos pelo WhatsApp aqui. Um toque para ligar, uma mensagem para registar.", target: '[data-tour="nav-whatsapp"]' },
+  { emoji: "❓", title: "Precisas de ajuda?", body: "Este botão fica sempre aqui. Clica a qualquer momento para repetir este tutorial do início.", target: '[data-tour="help"]' },
+];
 
 const Dashboard = () => {
   return (
