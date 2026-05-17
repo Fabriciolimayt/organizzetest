@@ -33,6 +33,7 @@ const DashboardLayout = () => {
                 key={l.to}
                 to={l.to}
                 end={l.end}
+                data-tour={`nav-${l.to.split("/").pop()}`}
                 className={({ isActive }) =>
                   `px-3 py-1.5 text-sm rounded-md transition-colors ${
                     isActive
