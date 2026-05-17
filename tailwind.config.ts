@@ -14,6 +14,7 @@ export default {
     },
     fontFamily: {
       sans: ['Inter', 'sans-serif'],
+      serif: ['Fraunces', 'Georgia', 'serif'],
     },
     extend: {
       colors: {
