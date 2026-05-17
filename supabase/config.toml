@@ -1,10 +1,10 @@
 project_id = "lxlsrnysjtojnlhvjjew"
 
 [functions.parse-receipt]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-expense-text]
-verify_jwt = false
+verify_jwt = true
 
 [functions.monthly-summary]
-verify_jwt = false
+verify_jwt = true

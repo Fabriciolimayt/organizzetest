@@ -2,9 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import Signup from "./pages/Signup";
+import Auth from "./pages/Auth";
 import OnboardingNome from "./pages/OnboardingNome";
 import OnboardingIdioma from "./pages/OnboardingIdioma";
 import OnboardingMoeda from "./pages/OnboardingMoeda";
@@ -23,32 +25,37 @@ import DashboardWhatsApp from "./pages/DashboardWhatsApp";
 
 const queryClient = new QueryClient();
 
+const Protected = ({ children }: { children: JSX.Element }) => <ProtectedRoute>{children}</ProtectedRoute>;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/onboarding/nome" element={<OnboardingNome />} />
-          <Route path="/onboarding/idioma" element={<OnboardingIdioma />} />
-          <Route path="/onboarding/moeda" element={<OnboardingMoeda />} />
-          <Route path="/onboarding/whatsapp" element={<OnboardingWhatsApp />} />
-          <Route path="/onboarding/whatsapp/verificar" element={<OnboardingWhatsAppVerificar />} />
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="lancamentos" element={<DashboardLancamentos />} />
-            <Route path="relatorios" element={<DashboardRelatorios />} />
-            <Route path="limite-de-gastos" element={<DashboardLimiteGastos />} />
-            <Route path="orcamento" element={<DashboardOrcamento />} />
-            <Route path="planos" element={<DashboardPlanos />} />
-            <Route path="grupos" element={<DashboardGrupos />} />
-            <Route path="whatsapp" element={<DashboardWhatsApp />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/signup" element={<Navigate to="/auth" replace />} />
+            <Route path="/onboarding/nome" element={<Protected><OnboardingNome /></Protected>} />
+            <Route path="/onboarding/idioma" element={<Protected><OnboardingIdioma /></Protected>} />
+            <Route path="/onboarding/moeda" element={<Protected><OnboardingMoeda /></Protected>} />
+            <Route path="/onboarding/whatsapp" element={<Protected><OnboardingWhatsApp /></Protected>} />
+            <Route path="/onboarding/whatsapp/verificar" element={<Protected><OnboardingWhatsAppVerificar /></Protected>} />
+            <Route path="/dashboard" element={<Protected><DashboardLayout /></Protected>}>
+              <Route index element={<Dashboard />} />
+              <Route path="lancamentos" element={<DashboardLancamentos />} />
+              <Route path="relatorios" element={<DashboardRelatorios />} />
+              <Route path="limite-de-gastos" element={<DashboardLimiteGastos />} />
+              <Route path="orcamento" element={<DashboardOrcamento />} />
+              <Route path="planos" element={<DashboardPlanos />} />
+              <Route path="grupos" element={<DashboardGrupos />} />
+              <Route path="whatsapp" element={<DashboardWhatsApp />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

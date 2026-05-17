@@ -1,5 +1,7 @@
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { z } from 'npm:zod@3.23.8';
 
 const SYSTEM = `És um extrator de dados de faturas/recibos. Recebes a imagem de um recibo (em qualquer idioma) e devolves SOMENTE um objeto JSON válido, sem markdown nem comentários, com o esquema:
 {
@@ -14,32 +16,48 @@ Combustível, transportes, parking, uber → "Transporte". Renda, luz, água, in
 Farmácia, médico → "Saúde". O resto → "Outros".
 Se algo não estiver visível, usa null. Os valores são números (não strings).`;
 
+const ALLOWED_CURRENCIES = ['EUR', 'BRL', 'USD', 'MZN'] as const;
+
+const BodySchema = z.object({
+  imageBase64: z.string().min(20).max(8_000_000),
+  currency: z.enum(ALLOWED_CURRENCIES).optional(),
+});
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { imageBase64, currency } = await req.json();
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      return new Response(JSON.stringify({ error: 'imageBase64 required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return jsonResponse({ error: 'Unauthorized' }, 401);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (claimsErr || !claims?.claims) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+    const raw = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(raw);
+    if (!parsed.success) return jsonResponse({ error: 'Invalid request' }, 400);
+    const { imageBase64, currency } = parsed.data;
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'AI not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (!LOVABLE_API_KEY) return jsonResponse({ error: 'AI not configured' }, 500);
 
     const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: SYSTEM + (currency ? `\nMoeda preferida: ${currency}.` : '') },
+          { role: 'system', content: SYSTEM },
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Extrai os itens deste recibo. Devolve só JSON.' },
+              { type: 'text', text: `Moeda preferida: ${currency ?? 'EUR'}. Extrai os itens deste recibo. Devolve só JSON.` },
               { type: 'image_url', image_url: { url: imageBase64 } },
             ],
           },
@@ -50,18 +68,18 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const t = await res.text();
-      return new Response(JSON.stringify({ error: `AI ${res.status}: ${t}` }), { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      console.error('AI gateway error', res.status, t);
+      return jsonResponse({ error: 'AI service temporarily unavailable' }, 502);
     }
     const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content ?? '{}';
-    let parsed: any;
-    try { parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; }
-    catch { parsed = { items: [], total: null }; }
+    const raw2 = data.choices?.[0]?.message?.content ?? '{}';
+    let out: unknown;
+    try { out = typeof raw2 === 'string' ? JSON.parse(raw2) : raw2; }
+    catch { out = { items: [], total: null }; }
 
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse(out);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.error('parse-receipt error', e);
+    return jsonResponse({ error: 'Internal error' }, 500);
   }
 });
