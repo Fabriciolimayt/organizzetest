@@ -75,8 +75,12 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <DashboardCard title="Acesso rápido">
           <div className="flex items-center justify-around py-2">
-            <QuickActionButton icon={<ArrowDownCircle size={20} />} label="Despesa" />
-            <QuickActionButton icon={<ArrowUpCircle size={20} />} label="Receita" />
+            <span data-tour="quick-despesa">
+              <QuickActionButton icon={<ArrowDownCircle size={20} />} label="Despesa" />
+            </span>
+            <span data-tour="quick-receita">
+              <QuickActionButton icon={<ArrowUpCircle size={20} />} label="Receita" />
+            </span>
             <QuickActionButton icon={<ArrowLeftRight size={20} />} label="Transf." />
             <QuickActionButton icon={<Download size={20} />} label="Importar" />
           </div>
