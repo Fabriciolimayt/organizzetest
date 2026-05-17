@@ -22,6 +22,7 @@ const GoogleIcon = () => (
 
 const Signup = () => {
   const [agreed, setAgreed] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-app-bg p-4">
