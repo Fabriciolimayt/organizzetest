@@ -1,40 +1,55 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Receipt, MessageSquare, Calendar, SkipForward } from "lucide-react";
+import { MessageCircle, Receipt, MessageSquare, Calendar, SkipForward, ChevronDown } from "lucide-react";
 import OnboardingWizardLayout from "@/components/onboarding/OnboardingWizardLayout";
 import { Button } from "@/components/ui/button";
-
-const ddiByCurrency: Record<string, { ddi: string; flag: string }> = {
-  EUR: { ddi: "+351", flag: "🇵🇹" },
-  BRL: { ddi: "+55", flag: "🇧🇷" },
-  MZN: { ddi: "+258", flag: "🇲🇿" },
-  USD: { ddi: "+1", flag: "🇺🇸" },
-};
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  WA_COUNTRIES,
+  countryForCurrency,
+  generateVerifyCode,
+  onlyDigits,
+  validatePhone,
+  type WaCountry,
+} from "@/lib/countries";
 
 const features = [
-  { icon: Receipt, title: "Digitalizar recibo", desc: "Foto → despesa" },
+  { icon: Receipt, title: "Foto de fatura", desc: "OCR automático" },
   { icon: MessageSquare, title: "Texto rápido", desc: '"Gastei 45€"' },
-  { icon: Calendar, title: "Relatório mensal", desc: "Dia 25 de cada mês" },
+  { icon: Calendar, title: "Resumo mensal", desc: "Dia 25" },
 ];
 
 const OnboardingWhatsApp = () => {
   const navigate = useNavigate();
-  const [phone, setPhone] = useState("");
-
   const currency = useMemo(
     () => localStorage.getItem("organizze.currency") || "EUR",
     []
   );
-  const { ddi, flag } = ddiByCurrency[currency] ?? ddiByCurrency.EUR;
+  const [country, setCountry] = useState<WaCountry>(() => countryForCurrency(currency));
+  const [phone, setPhone] = useState("");
+  const [open, setOpen] = useState(false);
 
-  const finish = () => {
-    if (phone.trim()) {
-      localStorage.setItem("organizze.whatsapp", `${ddi}${phone.trim()}`);
-    }
-    navigate("/dashboard?tour=1");
+  const valid = validatePhone(country, phone);
+
+  const startVerification = () => {
+    const code = generateVerifyCode();
+    const data = {
+      code,
+      phone: onlyDigits(phone),
+      countryCode: country.code,
+      ddi: country.ddi,
+      status: "pending" as const,
+      startedAt: Date.now(),
+    };
+    localStorage.setItem("organizze.waVerification", JSON.stringify(data));
+    navigate("/onboarding/whatsapp/verificar");
   };
 
-  const valid = phone.replace(/\D/g, "").length >= 8;
+  const skip = () => navigate("/dashboard?tour=1");
 
   return (
     <OnboardingWizardLayout
@@ -43,18 +58,18 @@ const OnboardingWhatsApp = () => {
       title="Conectar WhatsApp"
       subtitle={
         <>
-          Envia fotos de recibos e recebe o resumo mensal do teu orçamento no dia 25 —{" "}
+          Envia fotos de recibos e recebe o resumo mensal —{" "}
           <strong className="text-foreground">automaticamente.</strong>
         </>
       }
       onBack={() => navigate("/onboarding/moeda")}
-      onContinue={finish}
+      onContinue={startVerification}
       canContinue={valid}
       continueLabel="Verificar com WhatsApp"
       extraFooter={
         <div className="text-center space-y-1">
           <button
-            onClick={finish}
+            onClick={skip}
             className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
           >
             <SkipForward size={14} /> Saltar por agora
@@ -65,7 +80,6 @@ const OnboardingWhatsApp = () => {
         </div>
       }
     >
-      {/* Mini features */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {features.map((f) => {
           const Icon = f.icon;
@@ -81,7 +95,6 @@ const OnboardingWhatsApp = () => {
         })}
       </div>
 
-      {/* Card */}
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
@@ -95,34 +108,73 @@ const OnboardingWhatsApp = () => {
 
         <div>
           <label className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+            PAÍS
+          </label>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="w-full mt-1.5 h-11 px-3 rounded-lg border border-border bg-background flex items-center justify-between text-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-lg leading-none">{country.flag}</span>
+                  <span className="font-medium">{country.name}</span>
+                  <span className="text-muted-foreground">{country.ddi}</span>
+                </span>
+                <ChevronDown size={16} className="text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
+              {WA_COUNTRIES.map((c) => (
+                <button
+                  key={c.code}
+                  onClick={() => {
+                    setCountry(c);
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-secondary text-left ${
+                    c.code === country.code ? "bg-secondary" : ""
+                  }`}
+                >
+                  <span className="text-lg leading-none">{c.flag}</span>
+                  <span className="font-medium flex-1">{c.name}</span>
+                  <span className="text-muted-foreground">{c.ddi}</span>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div>
+          <label className="text-[11px] font-semibold tracking-wider text-muted-foreground">
             NÚMERO WHATSAPP
           </label>
           <div className="flex gap-2 mt-1.5">
             <div className="flex items-center gap-1.5 px-3 rounded-lg border border-border bg-background text-sm font-medium shrink-0">
-              <span>{flag}</span>
-              <span>{ddi}</span>
+              <span>{country.flag}</span>
+              <span>{country.ddi}</span>
             </div>
             <input
               type="tel"
               inputMode="numeric"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
-              placeholder="912345678"
-              maxLength={15}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+              placeholder={country.placeholder}
+              maxLength={18}
               className="flex-1 h-11 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Número completo:{" "}
             <span className="font-semibold text-foreground">
-              {ddi} {phone || "..."}
+              {country.ddi} {phone || "..."}
             </span>
           </p>
         </div>
 
         <Button
           disabled={!valid}
-          onClick={finish}
+          onClick={startVerification}
           className="w-full gap-2"
           variant={valid ? "default" : "secondary"}
         >

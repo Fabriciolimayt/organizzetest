@@ -1,0 +1,10 @@
+project_id = "lxlsrnysjtojnlhvjjew"
+
+[functions.parse-receipt]
+verify_jwt = false
+
+[functions.parse-expense-text]
+verify_jwt = false
+
+[functions.monthly-summary]
+verify_jwt = false

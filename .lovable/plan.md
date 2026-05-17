@@ -1,91 +1,100 @@
-## Fluxo de Onboarding Pós-Registro
+## Objetivo
 
-Após `/signup`, o usuário entra num wizard de 4 passos antes de cair no `/dashboard`. Mantemos a tela de nome já existente como passo 0 e adicionamos 3 novas telas inspiradas no moedas.app.
+Substituir o passo atual "Conectar WhatsApp" do onboarding (e a tab `/dashboard/whatsapp`) por um fluxo realista, igual ao do vídeo:
 
-### Estrutura de rotas
+1. Utilizador escolhe país (🇧🇷 BRA · 🇵🇹 PT · 🇬🇧 UK · 🇲🇿 MOZ) e mete o número.
+2. App gera um código `moedas-verify-XXXXXXXX` e abre o WhatsApp pré-preenchido para o número do "bot Moedas".
+3. Ecrã de espera com instruções + botão "Já enviei o código" (modo mock — sem Twilio/Meta).
+4. Após confirmar, o WhatsApp aparece como **Verificado** e o utilizador pode:
+   - **Enviar foto de fatura** → Lovable AI Vision (Gemini) extrai itens, total e moeda → grava no localStorage `organizze.expenses` → dashboard atualiza automaticamente.
+   - **Escrever texto** ("Gastei 45€ no mercado") → Gemini extrai valor + categoria → grava igualmente.
+5. Resumo mensal "no dia 25" mostrado in-app (sem envio real).
 
-```
-/onboarding/nome       → existente (passo 0 — não numerado)
-/onboarding/idioma     → 1/3  PT / EN
-/onboarding/moeda      → 2/3  EUR (padrão) / BRL / USD / MZN
-/onboarding/whatsapp   → 3/3  Conectar WhatsApp (opcional, com "Saltar")
-→ redireciona para /dashboard (com query `?tour=1` para disparar o tour de 8 passos depois)
-```
+## Países suportados
 
-### Componente compartilhado: `OnboardingWizardLayout`
+| País | Flag | DDI | Exemplo |
+|---|---|---|---|
+| Brasil | 🇧🇷 | +55 | 11 99999-9999 |
+| Portugal | 🇵🇹 | +351 | 912 345 678 |
+| Reino Unido | 🇬🇧 | +44 | 7700 900123 |
+| Moçambique | 🇲🇿 | +258 | 84 123 4567 |
 
-Wrapper único para os 3 novos passos, replicando o header verde do moedas.app:
+Default deriva da moeda escolhida no passo anterior (EUR→PT, BRL→BR, MZN→MZ, USD→UK fallback).
 
-- Header verde fixo com logo `organizze` à esquerda
-- Barra de progresso fina verde abaixo do header (preenchimento proporcional ao passo)
-- Linha superior com: `< Voltar` à esquerda · indicador de passos (3 pílulas, ativa em verde) ao centro · `N / 3` à direita
-- Ícone circular suave (bg verde claro) acima do título
-- Título serifado grande + subtítulo cinza
-- Slot de conteúdo
-- Footer fixo: botão `<` (voltar) + botão verde grande `Continuar >` (full-width no mobile)
+## Telas e ficheiros
 
-Props: `step (1|2|3)`, `icon`, `title`, `subtitle`, `onBack`, `onContinue`, `canContinue`, `children`, `extraFooter` (para o "Saltar por agora").
+### 1. `src/lib/countries.ts` (novo)
+Array exportado `WA_COUNTRIES` com `{code, flag, ddi, name, mask}` para os 4 países. Helper `formatPhone(ddi, raw)` e `validatePhone(ddi, raw)` (mínimo de dígitos por país).
 
-### Passo 1 — Idioma (`/onboarding/idioma`)
+### 2. `src/pages/OnboardingWhatsApp.tsx` (reescrita do conteúdo do form)
+- Substituir o "DDI derivado da moeda" por um **dropdown de país** com bandeira + nome + DDI, usando `WA_COUNTRIES`.
+- Input com máscara/placeholder por país.
+- Botão "Verificar com WhatsApp" → gera código `moedas-verify-${crypto.randomUUID().slice(0,8).toUpperCase()}`, guarda em `localStorage.organizze.waVerification = { code, phone, country, status: 'pending', startedAt }` e navega para `/onboarding/whatsapp/verificar`.
+- Mantém "Saltar por agora".
 
-- Grid 2 colunas com cards selecionáveis:
-  - 🇵🇹 Português · PT (pré-selecionado, com check verde no canto superior direito)
-  - 🇬🇧 English · EN
-- Card selecionado: borda verde + fundo `primary/5`; check em badge circular verde
-- Estado armazenado em `localStorage` (`organizze.locale`)
-- Continuar → `/onboarding/moeda`
+### 3. `src/pages/OnboardingWhatsAppVerificar.tsx` (novo)
+Tela igual ao print do vídeo:
+- Card com o código grande copiável `moedas-verify-XXXXXXXX` + botão Copiar.
+- Botão verde grande **"Abrir WhatsApp"** → `https://wa.me/16812765536?text=moedas-verify-XXXXXXXX` (número de bot fixo configurável).
+- Texto: "Envia este código ao nosso bot. Assim que recebermos, o teu WhatsApp fica ligado."
+- Estado em polling visual: "À espera da mensagem..." com spinner.
+- Botão secundário **"Já enviei — confirmar"** (modo mock) → marca `status: 'verified'`, guarda `organizze.whatsapp = { phone, country, verifiedAt }` e navega para `/dashboard?tour=1&wa=ok`.
+- Link "Trocar número" volta para o passo anterior.
 
-### Passo 2 — Moeda (`/onboarding/moeda`)
+### 4. `src/pages/DashboardWhatsApp.tsx` (refatorizada)
+Quando `organizze.whatsapp.verifiedAt` existe, a tab mostra o **simulador de chat** (sem precisar de telefone), espelhando o vídeo:
 
-- Lista vertical de cards (3 itens), cada um:
-  - Bandeira (emoji) · símbolo grande verde (€, Mt, $) · Nome em negrito + país em cinza · check verde à direita quando selecionado
-- Opções: **Euro** (Portugal, Europa — pré-selecionado), **Real** (Brasil), **Metical** (Moçambique), **Dólar** (Estados Unidos)
-- Card selecionado: fundo `primary/5` + borda verde
-- Estado em `localStorage` (`organizze.currency`, default `EUR`)
-- Continuar → `/onboarding/whatsapp`
+- Header verde com nome do bot "Moedas" + número.
+- Lista de bolhas (estado local persistido em `localStorage.organizze.waMessages[]`).
+- Mensagens iniciais pré-povoadas (boas-vindas, "Podes agora: enviar fotos / escrever despesa / receberes resumo dia 25").
+- Composer com 3 ações:
+  - **📷 Anexar foto** (input file accept="image/*") → mostra a bolha do utilizador com a thumb → bolha do bot "Recibo recebido! A extrair os itens..." → chama edge function `parse-receipt` → quando responde, bolha "✅ N itens registados!" listando linhas e total → injeta cada item em `localStorage.organizze.expenses` (despacha `window.dispatchEvent('organizze:expenses-updated')`).
+  - **💬 Escrever texto** → bolha utilizador → chama `parse-expense-text` → idem.
+  - Botão "Ver resumo do mês" → chama `monthly-summary` (gera texto a partir das despesas locais enviadas no body) → bolha do bot.
 
-### Passo 3 — WhatsApp (`/onboarding/whatsapp`)
+Quando ainda não verificado, mostra CTA "Ligar WhatsApp" que abre `/onboarding/whatsapp`.
 
-- Título "Conectar WhatsApp" + subtítulo: "Envia fotos de recibos e recebe o resumo mensal do teu orçamento no dia 25 — **automaticamente.**"
-- Linha de 3 mini-features (ícone + título + descrição):
-  - 🧾 Digitalizar recibo · Foto → despesa
-  - 💬 Texto rápido · "Gastei 45€"
-  - 📅 Relatório mensal · Dia 25 de cada mês
-- Card branco com bordas suaves:
-  - Header: ícone chat + "Conectar WhatsApp" / "Envia recibos via WhatsApp"
-  - Label "NÚMERO WHATSAPP"
-  - Linha: seletor de DDI (bandeira + `+351` / `+55` / `+258` / `+1`, derivado da moeda escolhida) + input de telefone
-  - Texto "Número completo: +351 ..."
-  - Botão `💬 Verificar com WhatsApp` (desabilitado até preencher número válido)
-- Footer extra: link central `▷ Saltar por agora` + legenda "Opcional — podes conectar mais tarde nas definições"
-- Após verificar OU saltar → `navigate('/dashboard?tour=1')`
+### 5. `src/pages/Dashboard.tsx` (pequeno ajuste)
+- Ler `localStorage.organizze.expenses` (já existe) e ouvir o evento `organizze:expenses-updated` para re-render imediato após receber dados do bot.
+- Mostrar toast "✅ Nova despesa registada via WhatsApp" quando o evento dispara com origem `whatsapp`.
 
-### Atualizações em arquivos existentes
+### 6. `src/App.tsx`
+Adicionar rota `/onboarding/whatsapp/verificar`.
 
-- **`src/pages/OnboardingNome.tsx`**: ao clicar Continuar, navegar para `/onboarding/idioma` (hoje não navega).
-- **`src/App.tsx`**: registrar as 3 novas rotas.
-- **`src/pages/Signup.tsx`**: garantir que o submit final aponte para `/onboarding/nome`.
+## Backend (Lovable Cloud + 3 Edge Functions)
 
-### Componentes novos
+Ativar Lovable Cloud (necessário para edge functions; sem base de dados nesta fase — tudo continua em localStorage para não complicar).
 
-```
-src/components/onboarding/
-  OnboardingWizardLayout.tsx     ← header verde, progress, voltar, continuar
-  SelectableCard.tsx             ← card com check para idioma/moeda
-src/pages/
-  OnboardingIdioma.tsx
-  OnboardingMoeda.tsx
-  OnboardingWhatsApp.tsx
-```
+### `supabase/functions/parse-receipt/index.ts`
+- POST `{ imageBase64: string, currency: string }`
+- Usa AI SDK + Gateway com `google/gemini-3-flash-preview` e `Output.object` (zod):
+  ```
+  { items: [{ name, amount, category }], total, currency, merchant?, date? }
+  ```
+- Categorias permitidas: `Alimentação | Transporte | Lazer | Casa | Saúde | Outros`.
+- Devolve JSON; o frontend grava localmente.
 
-### Design tokens
+### `supabase/functions/parse-expense-text/index.ts`
+- POST `{ text, currency }`
+- Mesmo modelo, schema `{ amount, category, description }`.
 
-Usar exclusivamente tokens semânticos já existentes (`primary`, `primary-foreground`, `muted-foreground`, `border`, `card`, `app-bg`). Tipografia: títulos com fonte serifada (se já houver no projeto, reutilizar; senão usar `font-bold` padrão com tracking apertado para aproximar do moedas.app).
+### `supabase/functions/monthly-summary/index.ts`
+- POST `{ expenses, currency, month }`
+- `generateText` com Gemini → devolve `{ summary: string }` no formato do print (tópicos por categoria + total + observação).
 
-### Responsividade
+Todos com CORS e validação Zod, sem JWT (uso anónimo nesta fase).
 
-- Mobile-first (viewport atual 402px). Cards de idioma em 2 colunas mesmo no mobile; moeda em 1 coluna empilhada. Footer de botões sticky no bottom em telas pequenas.
+## Detalhes técnicos
 
-### Fora deste plano
+- **Número do bot mock**: constante `WA_BOT_NUMBER = "16812765536"` (mesmo do vídeo) em `src/lib/countries.ts`. Trocável depois.
+- **Link wa.me**: `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(code)}`.
+- **Imagens**: convertidas a base64 no frontend antes de chamar a edge function (limite ~5 MB, comprimir com canvas se necessário — usar helper simples `fileToBase64(file, maxWidth=1280)`).
+- **Persistência**: continua tudo em `localStorage` (chaves `organizze.*`). Não criamos tabelas neste passo — fica preparado para migrar depois.
+- **Tokens de design**: reutilizar `primary`, `card`, `border`, `muted-foreground`. Sem cores hard-coded.
+- **Responsivo**: mobile-first (chat ocupa altura `calc(100dvh - header)` no mobile, max-w-2xl no desktop).
 
-O **tour guiado de 8 passos no dashboard** será feito numa segunda etapa, quando você enviar os prints restantes. Vou apenas deixar preparado: ao chegar em `/dashboard?tour=1`, armazenar uma flag para acionar o tour depois.
+## Fora deste plano
+
+- Envio real de mensagens WhatsApp (Twilio/Meta) — fica para uma segunda fase quando quiseres publicar.
+- Cron real no dia 25 — por agora só o botão "Ver resumo".
+- Migrar despesas para tabela Supabase — fica como TODO assim que a app for multi-device.

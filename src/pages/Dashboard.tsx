@@ -177,6 +177,24 @@ const Dashboard = () => {
     return () => window.removeEventListener("organizze:start-tour", handler);
   }, []);
 
+  // Sync expenses when WhatsApp bot adds new ones
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      try {
+        const fresh = JSON.parse(localStorage.getItem("organizze.expenses") || "[]");
+        setExpenses(fresh);
+        const detail = (e as CustomEvent).detail;
+        if (detail?.source === "whatsapp") {
+          import("@/hooks/use-toast").then(({ toast }) =>
+            toast({ title: "✅ Despesa registada via WhatsApp", description: `${detail.added?.length ?? 0} novo(s) item(s)` })
+          );
+        }
+      } catch {}
+    };
+    window.addEventListener("organizze:expenses-updated", onUpdate);
+    return () => window.removeEventListener("organizze:expenses-updated", onUpdate);
+  }, [setExpenses]);
+
   // Derived totals
   const spentByCat = useMemo(() => {
     const m: Record<string, number> = {};
