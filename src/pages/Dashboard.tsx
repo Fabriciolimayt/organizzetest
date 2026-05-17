@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+
 import {
   ArrowRight,
   Plus,
@@ -127,7 +127,7 @@ const Donut = ({ data, size = 160 }: { data: { value: number; color: string }[];
 
 
 const Dashboard = () => {
-  const [params, setParams] = useSearchParams();
+  
 
 
   const [currency] = useLocalState<string>("organizze.currency", "EUR");
