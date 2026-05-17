@@ -163,19 +163,8 @@ const Dashboard = () => {
   const [expOpen, setExpOpen] = useState(false);
   const [expDraft, setExpDraft] = useState({ name: "", amount: "", category: "subscricoes" as CategoryKey, fixed: true });
 
-  useEffect(() => {
-    if (params.get("tour") === "1") {
-      setTourOpen(true);
-      params.delete("tour");
-      setParams(params, { replace: true });
-    }
-  }, [params, setParams]);
+  // Tour is now handled globally by TourProvider — local triggers removed.
 
-  useEffect(() => {
-    const handler = () => setTourOpen(true);
-    window.addEventListener("organizze:start-tour", handler);
-    return () => window.removeEventListener("organizze:start-tour", handler);
-  }, []);
 
   // Sync expenses when WhatsApp bot adds new ones
   useEffect(() => {
@@ -240,7 +229,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
-      <TourOverlay steps={tourSteps} open={tourOpen} onClose={() => setTourOpen(false)} />
+      {/* Global tour overlay is rendered by TourProvider */}
 
       {/* Greeting */}
       <div className="px-1">
