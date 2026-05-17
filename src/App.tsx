@@ -32,6 +32,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding/nome" element={<OnboardingNome />} />
+          <Route path="/onboarding/idioma" element={<OnboardingIdioma />} />
+          <Route path="/onboarding/moeda" element={<OnboardingMoeda />} />
+          <Route path="/onboarding/whatsapp" element={<OnboardingWhatsApp />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="lancamentos" element={<DashboardLancamentos />} />
