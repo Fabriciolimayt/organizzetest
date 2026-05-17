@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import TourOverlay, { TourStep } from "@/components/dashboard/TourOverlay";
+// Tour handled globally by TourProvider
 
 // ---- Types & helpers ----
 type CategoryKey =
@@ -123,21 +123,12 @@ const Donut = ({ data, size = 160 }: { data: { value: number; color: string }[];
   );
 };
 
-// ---- Tour ----
-const tourSteps: TourStep[] = [
-  { emoji: "👋", title: "Bem-vindo às tuas finanças!", body: "Vamos mostrar-te como funciona em menos de 1 minuto." },
-  { emoji: "💰", title: "Define o teu rendimento", body: "Indica quanto recebes por mês — é a base de todo o orçamento.", target: '[data-tour="salario"]' },
-  { emoji: "📊", title: "Divide o teu dinheiro", body: "Escolhe como distribuir pelas categorias.", target: '[data-tour="orcamento"]' },
-  { emoji: "📋", title: "Regista despesas fixas", body: "Adiciona despesas recorrentes — atualiza em tempo real.", target: '[data-tour="despesas"]' },
-  { emoji: "🔀", title: "Planos de orçamento", body: "Cria cenários diferentes e alterna num clique.", target: '[data-tour="planos"]' },
-  { emoji: "👥", title: "Orçamento partilhado", body: "Cria um grupo com o teu parceiro ou família.", target: '[data-tour="nav-grupos"]' },
-  { emoji: "📱", title: "Integração WhatsApp", body: "Liga o WhatsApp e regista despesas por mensagem.", target: '[data-tour="nav-whatsapp"]' },
-  { emoji: "❓", title: "Precisas de ajuda?", body: "Este botão fica sempre aqui para repetir o tutorial.", target: '[data-tour="help"]' },
-];
+// (tour steps now defined in src/components/tour/TourProvider.tsx)
+
 
 const Dashboard = () => {
   const [params, setParams] = useSearchParams();
-  const [tourOpen, setTourOpen] = useState(false);
+
 
   const [currency] = useLocalState<string>("organizze.currency", "EUR");
   const sym = CURRENCY_SYMBOLS[currency] ?? "€";
