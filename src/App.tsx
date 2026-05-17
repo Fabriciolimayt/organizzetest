@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Signup from "./pages/Signup";
 import OnboardingNome from "./pages/OnboardingNome";
+import OnboardingIdioma from "./pages/OnboardingIdioma";
+import OnboardingMoeda from "./pages/OnboardingMoeda";
+import OnboardingWhatsApp from "./pages/OnboardingWhatsApp";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
@@ -29,6 +32,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding/nome" element={<OnboardingNome />} />
+          <Route path="/onboarding/idioma" element={<OnboardingIdioma />} />
+          <Route path="/onboarding/moeda" element={<OnboardingMoeda />} />
+          <Route path="/onboarding/whatsapp" element={<OnboardingWhatsApp />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="lancamentos" element={<DashboardLancamentos />} />

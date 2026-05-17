@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import InputField from "@/components/InputField";
 import SocialLoginButton from "@/components/SocialLoginButton";
@@ -22,6 +22,7 @@ const GoogleIcon = () => (
 
 const Signup = () => {
   const [agreed, setAgreed] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-app-bg p-4">
@@ -46,7 +47,7 @@ const Signup = () => {
         </div>
 
         {/* Form */}
-        <form className="w-full flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
+        <form className="w-full flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (agreed) navigate("/onboarding/nome"); }}>
           <InputField label="Seu e-mail" type="email" placeholder="seuemail@exemplo.com" />
           <div className="grid grid-cols-2 gap-3">
             <InputField label="Senha" type="password" placeholder="••••••••" />

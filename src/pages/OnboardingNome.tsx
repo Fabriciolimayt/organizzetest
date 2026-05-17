@@ -3,10 +3,18 @@ import InputField from "@/components/InputField";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import onboardingIllustration from "@/assets/onboarding-illustration.png";
 
 const OnboardingNome = () => {
   const [name, setName] = useState("");
+  const navigate = useNavigate();
+
+  const handleContinue = () => {
+    if (!name.trim()) return;
+    localStorage.setItem("organizze.name", name.trim());
+    navigate("/onboarding/idioma");
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-app-bg">
@@ -33,6 +41,7 @@ const OnboardingNome = () => {
               onChange={(e) => setName(e.target.value)}
             />
             <Button
+              onClick={handleContinue}
               disabled={!name.trim()}
               size="lg"
               variant={name.trim() ? "default" : "secondary"}
