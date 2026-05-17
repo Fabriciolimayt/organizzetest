@@ -47,7 +47,7 @@ const Signup = () => {
         </div>
 
         {/* Form */}
-        <form className="w-full flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
+        <form className="w-full flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (agreed) navigate("/onboarding/nome"); }}>
           <InputField label="Seu e-mail" type="email" placeholder="seuemail@exemplo.com" />
           <div className="grid grid-cols-2 gap-3">
             <InputField label="Senha" type="password" placeholder="••••••••" />
