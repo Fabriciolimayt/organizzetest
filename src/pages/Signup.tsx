@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import InputField from "@/components/InputField";
 import SocialLoginButton from "@/components/SocialLoginButton";
