@@ -41,6 +41,7 @@ const OnboardingNome = () => {
               onChange={(e) => setName(e.target.value)}
             />
             <Button
+              onClick={handleContinue}
               disabled={!name.trim()}
               size="lg"
               variant={name.trim() ? "default" : "secondary"}
