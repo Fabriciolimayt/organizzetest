@@ -9,6 +9,7 @@ import OnboardingNome from "./pages/OnboardingNome";
 import OnboardingIdioma from "./pages/OnboardingIdioma";
 import OnboardingMoeda from "./pages/OnboardingMoeda";
 import OnboardingWhatsApp from "./pages/OnboardingWhatsApp";
+import OnboardingWhatsAppVerificar from "./pages/OnboardingWhatsAppVerificar";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/onboarding/idioma" element={<OnboardingIdioma />} />
           <Route path="/onboarding/moeda" element={<OnboardingMoeda />} />
           <Route path="/onboarding/whatsapp" element={<OnboardingWhatsApp />} />
+          <Route path="/onboarding/whatsapp/verificar" element={<OnboardingWhatsAppVerificar />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="lancamentos" element={<DashboardLancamentos />} />
