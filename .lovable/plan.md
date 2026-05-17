@@ -1,100 +1,71 @@
-## Objetivo
+# Plano
 
-Substituir o passo atual "Conectar WhatsApp" do onboarding (e a tab `/dashboard/whatsapp`) por um fluxo realista, igual ao do vídeo:
+## 1. Tour obrigatório para novos registos (global, multi-página)
 
-1. Utilizador escolhe país (🇧🇷 BRA · 🇵🇹 PT · 🇬🇧 UK · 🇲🇿 MOZ) e mete o número.
-2. App gera um código `moedas-verify-XXXXXXXX` e abre o WhatsApp pré-preenchido para o número do "bot Moedas".
-3. Ecrã de espera com instruções + botão "Já enviei o código" (modo mock — sem Twilio/Meta).
-4. Após confirmar, o WhatsApp aparece como **Verificado** e o utilizador pode:
-   - **Enviar foto de fatura** → Lovable AI Vision (Gemini) extrai itens, total e moeda → grava no localStorage `organizze.expenses` → dashboard atualiza automaticamente.
-   - **Escrever texto** ("Gastei 45€ no mercado") → Gemini extrai valor + categoria → grava igualmente.
-5. Resumo mensal "no dia 25" mostrado in-app (sem envio real).
+**Estado atual:** o tour só existe dentro do `/dashboard` (em `Dashboard.tsx`) e só é disparado via `?tour=1` ou pelos botões "Primeiros passos". Não cobre o resto do site e não arranca automaticamente após o registo.
 
-## Países suportados
+**O que vai mudar:**
 
-| País | Flag | DDI | Exemplo |
+- Criar um **TourProvider** global em `src/components/tour/TourProvider.tsx` montado no `App.tsx`, com:
+  - Lista única de passos cobrindo **todas as secções** indicadas: Visão geral, Orçamento, Lançamentos, Relatórios, Planos, Grupos, WhatsApp, Limites, botão de ajuda flutuante.
+  - Navegação entre rotas dentro do tour (cada passo pode ter um `route`; o provider faz `navigate(route)` antes de medir o `target`).
+  - Persistência em `localStorage` (`organizze.tourCompleted`) para não repetir.
+
+- Mover `TourOverlay` para fora do `Dashboard.tsx` e usá-lo a partir do provider, para que o destaque funcione em qualquer página.
+
+- **Trigger automático:** logo após o signup bem-sucedido em `Auth.tsx` (e no fim do onboarding em `OnboardingWhatsAppVerificar.tsx`) marcar `organizze.firstRun=true`. O `TourProvider` deteta esta flag no primeiro render dentro de `/dashboard` e arranca o tour automaticamente.
+
+- Botão "Primeiros passos" e o botão de ajuda flutuante passam a chamar `tour.start()` do provider (continua a funcionar manualmente).
+
+- Manter os atributos `data-tour="…"` que já existem e adicionar os que faltam nas páginas internas (`DashboardLancamentos`, `DashboardRelatorios`, etc.).
+
+## 2. WhatsApp a funcionar a sério
+
+**Estado atual:** o "WhatsApp" é um **simulador** dentro da app (`DashboardWhatsApp.tsx`). Não há ligação real ao WhatsApp — o "código de verificação" e o "bot" são mock. As edge functions `parse-receipt`, `parse-expense-text`, `monthly-summary` já existem e funcionam com Gemini, mas só são chamadas pelo simulador.
+
+Para o utilizador receber/enviar mensagens reais no WhatsApp do telemóvel é obrigatório um **provedor da API oficial do WhatsApp**. Não há forma de o contornar — o WhatsApp não permite bots sem passar por um BSP (Business Solution Provider) ou pela Cloud API da Meta.
+
+### Opções (precisas de escolher uma)
+
+| Opção | Custo | Setup | Notas |
 |---|---|---|---|
-| Brasil | 🇧🇷 | +55 | 11 99999-9999 |
-| Portugal | 🇵🇹 | +351 | 912 345 678 |
-| Reino Unido | 🇬🇧 | +44 | 7700 900123 |
-| Moçambique | 🇲🇿 | +258 | 84 123 4567 |
+| **A. Meta WhatsApp Cloud API** (recomendado) | Grátis até 1000 conversas/mês | Conta Meta Business + número dedicado + verificação | Webhook oficial, sem intermediários |
+| **B. Twilio WhatsApp** | Sandbox grátis para teste; produção pago | Conta Twilio + sandbox join code | Sandbox arranca em 2 min, ótimo para demo |
+| **C. Evolution API / Z-API** (não oficial) | ~10-30€/mês | Servidor próprio ou SaaS | Usa WhatsApp Web, risco de banimento |
+| **D. Continuar simulador** | 0 | Já feito | Não envia mensagens reais |
 
-Default deriva da moeda escolhida no passo anterior (EUR→PT, BRL→BR, MZN→MZ, USD→UK fallback).
+### O que será construído (independente do provedor escolhido)
 
-## Telas e ficheiros
+1. **Tabela `expenses` em Lovable Cloud** (com RLS por `user_id`) — substitui o `localStorage`, para o webhook conseguir escrever e o dashboard ler via Realtime.
+2. **Tabela `whatsapp_links`** — guarda `user_id ↔ phone_number ↔ verification_code ↔ verified_at`.
+3. **Edge function `whatsapp-webhook`** (`verify_jwt=false`, valida assinatura do provedor):
+   - Recebe mensagem do WhatsApp.
+   - Procura o `user_id` pelo número.
+   - Se for o código `moedas-verify-XXXX` → marca `verified_at` e responde "WhatsApp ligado ✅".
+   - Se for texto → chama `parse-expense-text` → insere em `expenses`.
+   - Se for imagem → faz download da media, chama `parse-receipt` (Gemini Vision) → insere itens em `expenses`.
+   - Envia resposta de confirmação de volta via API do provedor.
+4. **Edge function `whatsapp-send`** — usada pelo dashboard para enviar o resumo mensal.
+5. **Dashboard com Realtime:** subscreve à tabela `expenses` para atualizar em tempo real quando o webhook insere — não precisa de eventos `localStorage` nem do simulador.
+6. **Secrets necessários** (depende da escolha): `META_WHATSAPP_TOKEN` + `META_PHONE_NUMBER_ID` + `META_VERIFY_TOKEN` (opção A) **ou** `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_WHATSAPP_FROM` (opção B). Pedidos via `add_secret` no momento certo.
 
-### 1. `src/lib/countries.ts` (novo)
-Array exportado `WA_COUNTRIES` com `{code, flag, ddi, name, mask}` para os 4 países. Helper `formatPhone(ddi, raw)` e `validatePhone(ddi, raw)` (mínimo de dígitos por país).
+## Decisões que preciso de ti
 
-### 2. `src/pages/OnboardingWhatsApp.tsx` (reescrita do conteúdo do form)
-- Substituir o "DDI derivado da moeda" por um **dropdown de país** com bandeira + nome + DDI, usando `WA_COUNTRIES`.
-- Input com máscara/placeholder por país.
-- Botão "Verificar com WhatsApp" → gera código `moedas-verify-${crypto.randomUUID().slice(0,8).toUpperCase()}`, guarda em `localStorage.organizze.waVerification = { code, phone, country, status: 'pending', startedAt }` e navega para `/onboarding/whatsapp/verificar`.
-- Mantém "Saltar por agora".
+1. **Provedor WhatsApp:** A (Meta Cloud), B (Twilio sandbox para já), C (Evolution/Z-API), ou D (manter simulador)?
+2. **Tour:** confirmas que o tour automático deve abrir **só uma vez** por utilizador (não a cada login) e cobrir as 8 secções listadas acima?
 
-### 3. `src/pages/OnboardingWhatsAppVerificar.tsx` (novo)
-Tela igual ao print do vídeo:
-- Card com o código grande copiável `moedas-verify-XXXXXXXX` + botão Copiar.
-- Botão verde grande **"Abrir WhatsApp"** → `https://wa.me/16812765536?text=moedas-verify-XXXXXXXX` (número de bot fixo configurável).
-- Texto: "Envia este código ao nosso bot. Assim que recebermos, o teu WhatsApp fica ligado."
-- Estado em polling visual: "À espera da mensagem..." com spinner.
-- Botão secundário **"Já enviei — confirmar"** (modo mock) → marca `status: 'verified'`, guarda `organizze.whatsapp = { phone, country, verifiedAt }` e navega para `/dashboard?tour=1&wa=ok`.
-- Link "Trocar número" volta para o passo anterior.
+Depois de responderes implemento numa só passagem.
 
-### 4. `src/pages/DashboardWhatsApp.tsx` (refatorizada)
-Quando `organizze.whatsapp.verifiedAt` existe, a tab mostra o **simulador de chat** (sem precisar de telefone), espelhando o vídeo:
+## Detalhes técnicos (referência)
 
-- Header verde com nome do bot "Moedas" + número.
-- Lista de bolhas (estado local persistido em `localStorage.organizze.waMessages[]`).
-- Mensagens iniciais pré-povoadas (boas-vindas, "Podes agora: enviar fotos / escrever despesa / receberes resumo dia 25").
-- Composer com 3 ações:
-  - **📷 Anexar foto** (input file accept="image/*") → mostra a bolha do utilizador com a thumb → bolha do bot "Recibo recebido! A extrair os itens..." → chama edge function `parse-receipt` → quando responde, bolha "✅ N itens registados!" listando linhas e total → injeta cada item em `localStorage.organizze.expenses` (despacha `window.dispatchEvent('organizze:expenses-updated')`).
-  - **💬 Escrever texto** → bolha utilizador → chama `parse-expense-text` → idem.
-  - Botão "Ver resumo do mês" → chama `monthly-summary` (gera texto a partir das despesas locais enviadas no body) → bolha do bot.
-
-Quando ainda não verificado, mostra CTA "Ligar WhatsApp" que abre `/onboarding/whatsapp`.
-
-### 5. `src/pages/Dashboard.tsx` (pequeno ajuste)
-- Ler `localStorage.organizze.expenses` (já existe) e ouvir o evento `organizze:expenses-updated` para re-render imediato após receber dados do bot.
-- Mostrar toast "✅ Nova despesa registada via WhatsApp" quando o evento dispara com origem `whatsapp`.
-
-### 6. `src/App.tsx`
-Adicionar rota `/onboarding/whatsapp/verificar`.
-
-## Backend (Lovable Cloud + 3 Edge Functions)
-
-Ativar Lovable Cloud (necessário para edge functions; sem base de dados nesta fase — tudo continua em localStorage para não complicar).
-
-### `supabase/functions/parse-receipt/index.ts`
-- POST `{ imageBase64: string, currency: string }`
-- Usa AI SDK + Gateway com `google/gemini-3-flash-preview` e `Output.object` (zod):
-  ```
-  { items: [{ name, amount, category }], total, currency, merchant?, date? }
-  ```
-- Categorias permitidas: `Alimentação | Transporte | Lazer | Casa | Saúde | Outros`.
-- Devolve JSON; o frontend grava localmente.
-
-### `supabase/functions/parse-expense-text/index.ts`
-- POST `{ text, currency }`
-- Mesmo modelo, schema `{ amount, category, description }`.
-
-### `supabase/functions/monthly-summary/index.ts`
-- POST `{ expenses, currency, month }`
-- `generateText` com Gemini → devolve `{ summary: string }` no formato do print (tópicos por categoria + total + observação).
-
-Todos com CORS e validação Zod, sem JWT (uso anónimo nesta fase).
-
-## Detalhes técnicos
-
-- **Número do bot mock**: constante `WA_BOT_NUMBER = "16812765536"` (mesmo do vídeo) em `src/lib/countries.ts`. Trocável depois.
-- **Link wa.me**: `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(code)}`.
-- **Imagens**: convertidas a base64 no frontend antes de chamar a edge function (limite ~5 MB, comprimir com canvas se necessário — usar helper simples `fileToBase64(file, maxWidth=1280)`).
-- **Persistência**: continua tudo em `localStorage` (chaves `organizze.*`). Não criamos tabelas neste passo — fica preparado para migrar depois.
-- **Tokens de design**: reutilizar `primary`, `card`, `border`, `muted-foreground`. Sem cores hard-coded.
-- **Responsivo**: mobile-first (chat ocupa altura `calc(100dvh - header)` no mobile, max-w-2xl no desktop).
-
-## Fora deste plano
-
-- Envio real de mensagens WhatsApp (Twilio/Meta) — fica para uma segunda fase quando quiseres publicar.
-- Cron real no dia 25 — por agora só o botão "Ver resumo".
-- Migrar despesas para tabela Supabase — fica como TODO assim que a app for multi-device.
+```text
+src/
+  components/tour/TourProvider.tsx   (novo, global)
+  components/tour/tourSteps.ts       (novo, com route + target por passo)
+  App.tsx                            (envolve em <TourProvider>)
+  pages/Auth.tsx                     (set firstRun=true após signup)
+supabase/
+  migrations/...                     (tabelas expenses + whatsapp_links + RLS)
+  functions/whatsapp-webhook/        (novo)
+  functions/whatsapp-send/           (novo)
+```
