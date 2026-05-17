@@ -33,8 +33,26 @@ const tourSteps: TourStep[] = [
 ];
 
 const Dashboard = () => {
+  const [params, setParams] = useSearchParams();
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    if (params.get("tour") === "1") {
+      setTourOpen(true);
+      params.delete("tour");
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams]);
+
+  useEffect(() => {
+    const handler = () => setTourOpen(true);
+    window.addEventListener("organizze:start-tour", handler);
+    return () => window.removeEventListener("organizze:start-tour", handler);
+  }, []);
+
   return (
     <div className="space-y-6">
+      <TourOverlay steps={tourSteps} open={tourOpen} onClose={() => setTourOpen(false)} />
       {/* Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Welcome Card */}
