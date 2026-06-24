@@ -44,7 +44,40 @@ const modernStyles = `
     border-color: rgba(16, 185, 129, 0.4);
     box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.25);
   }
+
+  /* 3D Logo Animation */
+  .logo-3d-spin {
+    animation: spin-3d 8s linear infinite;
+    transform-style: preserve-3d;
+  }
+  @keyframes spin-3d {
+    0% { transform: rotateY(0deg) rotateX(10deg); }
+    100% { transform: rotateY(360deg) rotateX(10deg); }
+  }
+  .logo-glow {
+    filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.6));
+  }
+  .logo-text-glow {
+    text-shadow: 0 0 25px rgba(16, 185, 129, 0.3), 0 0 10px rgba(0, 0, 0, 0.5);
+  }
 `;
+
+// Componente do Logo Animado 3D com alta visibilidade
+const AnimatedLogo = () => (
+  <div className="flex items-center gap-4 mb-10 perspective-1000">
+    <div className="logo-3d-spin w-14 h-14 lg:w-16 lg:h-16 relative flex items-center justify-center">
+      {/* TROQUE PELO CAMINHO DA SUA LOGO AQUI */}
+      <img src="/sua-logo-aqui.png" alt="organizze logo" className="w-full h-full object-contain logo-glow" />
+    </div>
+    <div className="flex flex-col">
+      {/* Texto alterado para Branco Puro para não ficar ofuscado */}
+      <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white logo-text-glow">organizze</h2>
+      <span className="text-xs lg:text-sm text-emerald-400 font-bold tracking-widest uppercase -mt-1">
+        Planeje. Poupe. Viva.
+      </span>
+    </div>
+  </div>
+);
 
 const problems = [
   {
@@ -184,17 +217,20 @@ const Index = () => {
       <section className="max-w-7xl mx-auto px-6 lg:px-12 pt-12 pb-24 lg:py-24 relative z-10">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="flex flex-col gap-7">
+            {/* Logo Component Added */}
+            <AnimatedLogo />
+
             <span className="text-sm font-semibold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
               <span className="w-8 h-px bg-emerald-400"></span>
               Pare de adivinhar para onde vai o seu dinheiro
             </span>
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.05] tracking-tight">
+            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.05] tracking-tight text-white">
               Sabe que está a gastar demais.{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent glow-text">
+              <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent glow-text">
                 Apenas não sabe onde.
               </span>
             </h1>
-            <p className="text-lg text-gray-200 max-w-md leading-relaxed font-medium">
+            <p className="text-lg text-gray-100 max-w-md leading-relaxed font-medium">
               O <strong className="text-white">organizze</strong> é o seu planeador de orçamento mensal. Defina a sua
               renda, divida em categorias, acompanhe o que realmente gasta — e receba um relatório no WhatsApp todo dia
               25.
@@ -213,13 +249,13 @@ const Index = () => {
                 <Button
                   size="lg"
                   variant="ghost"
-                  className="text-base px-6 py-6 text-gray-100 hover:text-white hover:bg-white/10 font-semibold"
+                  className="text-base px-6 py-6 text-white hover:text-white hover:bg-white/10 font-semibold"
                 >
                   Veja como funciona
                 </Button>
               </a>
             </div>
-            <p className="text-sm text-gray-300 flex items-center gap-2 font-medium">
+            <p className="text-sm text-gray-200 flex items-center gap-2 font-medium">
               <Check size={16} className="text-emerald-400" /> Sem cartão de crédito · 30 dias de teste grátis
             </p>
           </div>
@@ -249,7 +285,7 @@ const Index = () => {
                 </div>
                 <div className="bg-[#0b141a] px-3 py-4 space-y-3 min-h-[420px]">
                   <div className="text-center">
-                    <span className="text-[11px] bg-white/10 px-2 py-1 rounded text-gray-300 font-medium">Hoje</span>
+                    <span className="text-[11px] bg-white/10 px-2 py-1 rounded text-gray-200 font-medium">Hoje</span>
                   </div>
                   <div className="ml-auto bg-[#005c4b] rounded-lg px-3 py-2 text-sm max-w-[80%] shadow-sm">
                     <span className="text-white font-medium">Gastei € 45 no mercado 🛒</span>
@@ -267,7 +303,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="text-center">
-                    <span className="text-[11px] bg-white/10 px-2 py-1 rounded text-gray-300 font-medium">
+                    <span className="text-[11px] bg-white/10 px-2 py-1 rounded text-gray-200 font-medium">
                       25 de Janeiro
                     </span>
                   </div>
