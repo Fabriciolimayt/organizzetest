@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, MessageCircle, Check, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { Copy, MessageCircle, Check, ArrowLeft, Loader2 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +14,11 @@ type Verification = {
   ddi: string;
   status: "pending" | "verified";
   startedAt: number;
+};
+
+const formatBotNumber = (raw: string) => {
+  if (!raw || raw === "000000000000") return "(número Meta a configurar)";
+  return `+${raw}`;
 };
 
 const OnboardingWhatsAppVerificar = () => {
@@ -67,8 +72,9 @@ const OnboardingWhatsAppVerificar = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const sandboxNumberFmt = `+1 ${WA_BOT_NUMBER.slice(1, 4)} ${WA_BOT_NUMBER.slice(4, 7)}-${WA_BOT_NUMBER.slice(7)}`;
+  const botDisplay = formatBotNumber(WA_BOT_NUMBER);
   const waLinkVerify = `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(verification.code)}`;
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
 
   return (
     <div className="min-h-screen flex flex-col bg-app-bg">
@@ -86,61 +92,52 @@ const OnboardingWhatsAppVerificar = () => {
           <MessageCircle size={22} />
         </div>
         <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2 font-serif">
-          Liga o WhatsApp em 2 passos
+          Liga o WhatsApp num passo
         </h1>
         <p className="text-muted-foreground mb-6">
-          Estamos a usar o <strong>Twilio Sandbox</strong> para teste. Demora menos de 1 minuto.
+          Usamos a <strong>WhatsApp Business Cloud API</strong> oficial da Meta.
+          Envia o código abaixo e ligamos automaticamente.
         </p>
 
-        {/* Webhook setup info (one-time, for app owner) */}
+        {/* Setup info (one-time, for app owner) */}
         <details className="rounded-xl border border-dashed border-border bg-card/50 p-3 mb-4 text-sm">
           <summary className="cursor-pointer font-medium text-foreground">
-            ⚙️ Configuração inicial do Twilio (uma vez só)
+            ⚙️ Configuração inicial Meta (uma vez só)
           </summary>
           <div className="mt-3 space-y-2 text-muted-foreground">
-            <p>No painel Twilio em <strong>Messaging → Try it out → Send a WhatsApp message → Sandbox settings</strong>, no campo <em>"When a message comes in"</em>, cola:</p>
-            <div className="flex items-center justify-between gap-2 p-2 rounded bg-secondary">
-              <code className="font-mono text-xs break-all">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook</code>
-              <button onClick={() => copy(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`, "URL")}
-                className="shrink-0 w-7 h-7 rounded bg-card border border-border flex items-center justify-center">
-                <Copy size={12} />
-              </button>
+            <p>
+              Em <strong>Meta for Developers → WhatsApp → Configuration → Webhook</strong>, define:
+            </p>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-wider">Callback URL</div>
+              <div className="flex items-center justify-between gap-2 p-2 rounded bg-secondary">
+                <code className="font-mono text-xs break-all">{webhookUrl}</code>
+                <button onClick={() => copy(webhookUrl, "URL")}
+                  className="shrink-0 w-7 h-7 rounded bg-card border border-border flex items-center justify-center">
+                  <Copy size={12} />
+                </button>
+              </div>
             </div>
-            <p className="text-xs">Método: <strong>HTTP POST</strong>.</p>
+            <p className="text-xs">
+              <strong>Verify token:</strong> usa o valor de <code>WHATSAPP_VERIFY_TOKEN</code> configurado nas secrets do projeto.
+            </p>
+            <p className="text-xs">
+              Subscreve o campo <code>messages</code> em <em>Webhook fields</em>.
+            </p>
           </div>
         </details>
 
-
-        {/* Step 1 */}
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-3 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</span>
-            <h3 className="font-bold text-foreground">Entra no sandbox</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            No teu WhatsApp, envia <strong>uma única vez</strong> a palavra <code className="font-mono bg-secondary px-1.5 py-0.5 rounded">join &lt;teu-código&gt;</code> para:
-          </p>
-          <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-            <code className="font-mono text-sm font-bold text-primary">{sandboxNumberFmt}</code>
-            <button onClick={() => copy(`+${WA_BOT_NUMBER}`, "Número")}
-              className="shrink-0 w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-secondary">
-              <Copy size={16} />
-            </button>
-          </div>
-          <div className="flex gap-2 items-start text-xs text-muted-foreground">
-            <AlertCircle size={14} className="shrink-0 mt-0.5" />
-            <p>
-              O código <em>"join …"</em> obténs no painel Twilio em <strong>Messaging → Try it out → Send a WhatsApp message</strong>. Só precisas de fazer isto na primeira vez.
-            </p>
-          </div>
-        </div>
-
-        {/* Step 2 */}
+        {/* Single step */}
         <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-4">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">2</span>
+            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</span>
             <h3 className="font-bold text-foreground">Envia o teu código de verificação</h3>
           </div>
+
+          <p className="text-sm text-muted-foreground">
+            Envia esta mensagem para o nosso WhatsApp <strong className="text-foreground">{botDisplay}</strong>:
+          </p>
+
           <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
             <code className="font-mono text-base font-bold text-primary truncate">{verification.code}</code>
             <button onClick={() => copy(verification.code, "Código")}
@@ -155,7 +152,7 @@ const OnboardingWhatsAppVerificar = () => {
             </Button>
           </a>
           <p className="text-xs text-muted-foreground text-center">
-            Vamos detetar a mensagem automaticamente.
+            Vamos detetar a tua mensagem automaticamente.
           </p>
         </div>
 
