@@ -143,8 +143,17 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  // Read raw body and verify Meta signature on every POST
+  const rawBody = await req.text();
+  const sigHeader = req.headers.get("x-hub-signature-256");
+  const sigOk = await verifyMetaSignature(rawBody, sigHeader);
+  if (!sigOk) {
+    console.warn("invalid or missing x-hub-signature-256");
+    return new Response("Forbidden", { status: 403 });
+  }
+
   let body: any;
-  try { body = await req.json(); } catch { return new Response("OK"); }
+  try { body = JSON.parse(rawBody); } catch { return new Response("OK"); }
 
   const entry = body?.entry?.[0];
   const change = entry?.changes?.[0];
