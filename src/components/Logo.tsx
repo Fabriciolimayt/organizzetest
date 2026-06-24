@@ -4,9 +4,9 @@ type LogoProps = {
 };
 
 const SIZES = {
-  sm: { text: "text-sm", tracking: "tracking-[0.35em]", px: "px-3 py-2", gap: "gap-0.5", box: 56, slide: "12px" },
-  md: { text: "text-lg", tracking: "tracking-[0.4em]", px: "px-4 py-3", gap: "gap-1", box: 78, slide: "18px" },
-  lg: { text: "text-3xl", tracking: "tracking-[0.45em]", px: "px-7 py-5", gap: "gap-2", box: 132, slide: "28px" },
+  sm: { text: "text-sm", tracking: "tracking-[0.35em]", px: "px-3 py-2", gap: "gap-0.5", box: 56, left: "-translate-x-[12px]", right: "translate-x-[12px]" },
+  md: { text: "text-lg", tracking: "tracking-[0.4em]", px: "px-4 py-3", gap: "gap-1", box: 78, left: "-translate-x-[18px]", right: "translate-x-[18px]" },
+  lg: { text: "text-3xl", tracking: "tracking-[0.45em]", px: "px-7 py-5", gap: "gap-2", box: 132, left: "-translate-x-[28px]", right: "translate-x-[28px]" },
 };
 
 const Logo = ({ size = "md" }: LogoProps) => {
