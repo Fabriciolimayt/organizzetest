@@ -43,8 +43,9 @@ const Logo = ({ size = "md", white = false }: LogoProps) => {
         />
       </svg>
       <span
-        className={`font-semibold ${s.text} ${s.trackingIdle} ${s.trackingHover} ${textColor} transition-[letter-spacing] duration-500 ease-out`}
+        className={`${weight} ${s.text} ${s.trackingIdle} ${s.trackingHover} ${textColor} transition-[letter-spacing] duration-500 ease-out`}
       >
+
         ORGANIZZE
       </span>
     </div>
