@@ -1,46 +1,35 @@
-## Migrar WhatsApp para Meta Cloud API (oficial)
+## Novo Logo Animado ORGANIZZE
 
-Substituir o webhook Twilio pelo webhook oficial da **Meta WhatsApp Cloud API**. Mais robusto, sem sandbox, grátis até 1000 conversas/mês.
+Substituir o componente `Logo` atual (círculo verde "O" + texto) por uma versão neon ciano sobre fundo escuro, inspirada no GIF anexado, com animação ao passar o rato.
 
-### 1. O que precisas de ter na Meta (faço-te um guia passo-a-passo no chat depois de aprovares)
+### Visual
 
-- Conta **Meta Business** (business.facebook.com)
-- App no **developers.facebook.com** → produto "WhatsApp"
-- **Número de telefone de teste** (a Meta dá um grátis) ou o teu próprio número verificado
-- Recolher 4 valores:
-  - `META_WA_TOKEN` — System User Access Token (permanente) ou token temporário de 24h para testar
-  - `META_WA_PHONE_NUMBER_ID` — ID do número que envia mensagens
-  - `META_WA_VERIFY_TOKEN` — string aleatória que tu inventas (ex: `moedas-webhook-2026`)
-  - `META_WA_APP_SECRET` — para validar assinatura `X-Hub-Signature-256`
+- Container escuro arredondado (`bg-[#0a1520]`) com padding interno — sempre escuro, independente do tema do app.
+- Texto "ORGA" em cima e "NIZZE" em baixo, fonte mono/condensada com `letter-spacing` largo, gradiente ciano→azul (`#22d3ee` → `#3b82f6`).
+- Quadrado SVG fino traçado a ciano sobreposto ao centro das duas linhas (como no GIF).
+- Pequeno glow (`drop-shadow`) ciano permanente subtil.
 
-### 2. Mudanças no código
+### Animação no hover
 
-**`supabase/functions/whatsapp-webhook/index.ts`** — reescrever:
-- `GET` → responde ao handshake da Meta (`hub.challenge` se `hub.verify_token` bater certo)
-- `POST` → valida HMAC-SHA256 do body com `META_WA_APP_SECRET`, faz parse do JSON do Cloud API (estrutura `entry[].changes[].value.messages[]`)
-- Texto: `messages[0].text.body` → `parse-expense-text` → insere em `expenses`
-- Imagem: `messages[0].image.id` → GET `/{media_id}` para obter URL → download com Bearer token → base64 → `parse-receipt` → insere itens
-- Código de verificação: igual ao atual (`moedas-verify-XXXX`)
-- **Resposta** ao utilizador: POST para `https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages` com `{ messaging_product: "whatsapp", to, type: "text", text: { body } }`
+- Estado idle: "ORGA" deslocado para a esquerda (-20px, opacity 0.6), "NIZZE" deslocado para a direita (+20px, opacity 0.6), quadrado com `stroke-dashoffset` parcial.
+- Hover: ambas as linhas deslizam para a posição central (translateX 0, opacity 1) com `transition-all duration-500 ease-out`, e o quadrado completa o traçado (stroke-dashoffset 0) — efeito "letras encaixam + caixa fecha".
+- Glow intensifica no hover.
+- Versões compactas (header) reduzem proporcionalmente; versão grande (landing hero) pode ser usada com prop `size`.
 
-**`src/lib/countries.ts`** — trocar `WA_BOT_NUMBER` (14155238886 sandbox Twilio) pelo número Meta que vamos usar.
+### Onde aplica
 
-**`supabase/config.toml`** — já tem `verify_jwt = false` para `whatsapp-webhook`, fica.
+Substituição global — `src/components/Logo.tsx` é importado por:
+- `LandingHeader`, `Index` (hero / footer)
+- `DashboardLayout`, `Auth`, `Signup`, fluxos de Onboarding
 
-### 3. Secrets a pedir (via add_secret depois de aprovares)
+Todos passam a mostrar o novo logo neon automaticamente (header das páginas claras manterá o logo num "chip" escuro arredondado, o que dá ainda mais destaque à marca).
 
-`META_WA_TOKEN`, `META_WA_PHONE_NUMBER_ID`, `META_WA_VERIFY_TOKEN`, `META_WA_APP_SECRET`
+### Detalhes técnicos
 
-### 4. Configuração no painel Meta (passo final, eu dou as instruções)
-
-- Webhook URL: `https://lxlsrnysjtojnlhvjjew.supabase.co/functions/v1/whatsapp-webhook`
-- Verify Token: o mesmo que puseste em `META_WA_VERIFY_TOKEN`
-- Subscribe to: `messages`
-
-### 5. Limpeza
-
-Remover referências a Twilio (gateway, `TWILIO_API_KEY`) do webhook. Conexão Twilio do connector pode ficar inativa ou ser desligada.
-
----
-
-**Confirma e eu começo:** quero ir buscar os secrets primeiro (eu peço com `add_secret`), depois reescrevo o webhook e atualizo o número. Tens já uma app criada no Meta for Developers ou queres que te guie a criar?
+- Reescrever `src/components/Logo.tsx`:
+  - Props: `size?: 'sm' | 'md' | 'lg'` (default `md`), `white?: boolean` mantida por compatibilidade mas ignorada (o chip é sempre escuro).
+  - Estrutura: `<div class="group inline-flex ... bg-[#0a1520] rounded-lg px-4 py-3">` com SVG do quadrado em posição absoluta e duas `<span>` para ORGA / NIZZE.
+  - Transições via Tailwind (`group-hover:translate-x-0`, `group-hover:opacity-100`, `group-hover:[stroke-dashoffset:0]`).
+  - Sem dependências novas — CSS puro + Tailwind.
+- Sem alterações em `index.css` nem `tailwind.config.ts` (cores hardcoded no chip são intencionais porque o fundo do logo é fixo, não segue o tema).
+- Sem alterações de lógica/backend.
