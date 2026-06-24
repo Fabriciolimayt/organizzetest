@@ -10,8 +10,53 @@ const GEMINI_KEY   = Deno.env.get("GEMINI_API_KEY")!;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const APP_SECRET   = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
 
 const GRAPH = "https://graph.facebook.com/v19.0";
+
+const ALLOWED_CATEGORIES = new Set([
+  "Alimentação", "Transportes", "Saúde", "Lazer",
+  "Casa", "Tecnologia", "Restauração", "Outro",
+]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function truncate(s: unknown, n: number): string | null {
+  if (s == null) return null;
+  const str = String(s);
+  return str.length > n ? str.slice(0, n) : str;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.length % 2 ? "0" + hex : hex;
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(clean.substr(i * 2, 2), 16);
+  }
+  return out;
+}
+
+async function verifyMetaSignature(rawBody: string, header: string | null): Promise<boolean> {
+  if (!APP_SECRET || !header || !header.startsWith("sha256=")) return false;
+  const provided = hexToBytes(header.slice(7).trim());
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(APP_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody)),
+  );
+  return timingSafeEqual(provided, sig);
+}
 
 async function sendText(to: string, body: string) {
   try {
@@ -98,8 +143,17 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  // Read raw body and verify Meta signature on every POST
+  const rawBody = await req.text();
+  const sigHeader = req.headers.get("x-hub-signature-256");
+  const sigOk = await verifyMetaSignature(rawBody, sigHeader);
+  if (!sigOk) {
+    console.warn("invalid or missing x-hub-signature-256");
+    return new Response("Forbidden", { status: 403 });
+  }
+
   let body: any;
-  try { body = await req.json(); } catch { return new Response("OK"); }
+  try { body = JSON.parse(rawBody); } catch { return new Response("OK"); }
 
   const entry = body?.entry?.[0];
   const change = entry?.changes?.[0];
@@ -156,11 +210,18 @@ Deno.serve(async (req) => {
         return new Response("OK");
       }
 
-      const merchant = parsed.merchant ?? null;
-      const amount   = parsed.amount != null ? Number(parsed.amount) : null;
-      const date     = parsed.date ?? new Date().toISOString().slice(0, 10);
-      const category = parsed.category ?? "Outro";
-      const description = parsed.description ?? null;
+      const merchant = truncate(parsed.merchant, 255);
+      const amountRaw = parsed.amount != null ? Number(parsed.amount) : NaN;
+      const amount = Number.isFinite(amountRaw) && amountRaw > 0 && amountRaw < 1_000_000
+        ? Math.round(amountRaw * 100) / 100
+        : null;
+      const rawDate = typeof parsed.date === "string" ? parsed.date : "";
+      const date = DATE_RE.test(rawDate) && !isNaN(Date.parse(rawDate))
+        ? rawDate
+        : new Date().toISOString().slice(0, 10);
+      const rawCategory = typeof parsed.category === "string" ? parsed.category : "";
+      const category = ALLOWED_CATEGORIES.has(rawCategory) ? rawCategory : "Outro";
+      const description = truncate(parsed.description, 500);
 
       if (!amount || isNaN(amount)) {
         await sendText(from, "❌ Não consegui identificar o valor total da fatura. Tenta outra foto.");
