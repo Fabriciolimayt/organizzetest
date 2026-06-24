@@ -14,7 +14,10 @@ export const WA_COUNTRIES: WaCountry[] = [
   { code: "MZ", flag: "🇲🇿", ddi: "+258", name: "Moçambique", placeholder: "84 123 4567", minDigits: 9 },
 ];
 
-export const WA_BOT_NUMBER = "14155238886"; // Twilio WhatsApp Sandbox number
+// WhatsApp Business Cloud API (Meta) bot number — internacional, sem "+".
+// Configurar via VITE_WHATSAPP_BOT_NUMBER no .env quando o número Meta estiver ativo.
+export const WA_BOT_NUMBER =
+  (import.meta.env.VITE_WHATSAPP_BOT_NUMBER as string | undefined) || "000000000000";
 
 export const countryForCurrency = (currency: string): WaCountry => {
   const map: Record<string, WaCountry["code"]> = {
