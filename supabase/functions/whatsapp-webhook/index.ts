@@ -162,6 +162,36 @@ Deno.serve(async (req) => {
 
   const from: string = message.from;
 
+  // ── Verification handshake: detect "moedas-verify-XXXX" before any auth lookup ──
+  const incomingText: string | undefined =
+    message.type === "text" ? (message.text?.body ?? "").trim() : undefined;
+  const verifyMatch = incomingText?.match(/moedas-verify-[A-Z0-9]+/i)?.[0];
+  if (verifyMatch) {
+    const code = verifyMatch.toLowerCase().replace("moedas-verify-", "moedas-verify-");
+    const { data: link } = await supabase
+      .from("whatsapp_links")
+      .select("id, user_id, verified_at")
+      .ilike("verify_code", verifyMatch)
+      .maybeSingle();
+
+    if (link?.user_id) {
+      await supabase
+        .from("whatsapp_links")
+        .update({ verified_at: new Date().toISOString(), phone: from })
+        .eq("id", link.id);
+
+      await supabase
+        .from("whatsapp_users")
+        .upsert({ user_id: link.user_id, phone: from }, { onConflict: "phone" });
+
+      await sendText(from, "✅ WhatsApp ligado à tua conta Organizze! Envia uma foto de uma fatura para começar.");
+      return new Response("OK");
+    }
+
+    await sendText(from, "⚠️ Código inválido ou expirado. Tenta novamente a partir da app.");
+    return new Response("OK");
+  }
+
   // Resolve WhatsApp number → user_id
   const { data: waUser, error: waErr } = await supabase
     .from("whatsapp_users")
