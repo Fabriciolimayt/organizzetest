@@ -12,8 +12,10 @@ const SIZES = {
 const Logo = ({ size = "md", white = false }: LogoProps) => {
   const s = SIZES[size];
   const perimeter = s.box * 4;
-  const textColor = white ? "text-primary-foreground" : "text-foreground";
-  const strokeColor = white ? "text-primary-foreground" : "text-primary";
+  const textColor = white ? "text-white" : "text-foreground";
+  const strokeColor = white ? "text-white" : "text-primary";
+  const weight = white ? "font-bold" : "font-semibold";
+
 
   return (
     <div
