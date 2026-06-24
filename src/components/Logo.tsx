@@ -46,12 +46,8 @@ const Logo = ({ size = "md" }: LogoProps) => {
         </defs>
       </svg>
 
-      <span className={baseLine} style={{ transform: `translateX(-${s.slide})` }}>
-        ORGA
-      </span>
-      <span className={baseLine} style={{ transform: `translateX(${s.slide})` }}>
-        NIZZE
-      </span>
+      <span className={`${baseLine} ${s.left}`}>ORGA</span>
+      <span className={`${baseLine} ${s.right}`}>NIZZE</span>
     </div>
   );
 };
