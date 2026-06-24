@@ -10,8 +10,53 @@ const GEMINI_KEY   = Deno.env.get("GEMINI_API_KEY")!;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const APP_SECRET   = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
 
 const GRAPH = "https://graph.facebook.com/v19.0";
+
+const ALLOWED_CATEGORIES = new Set([
+  "Alimentação", "Transportes", "Saúde", "Lazer",
+  "Casa", "Tecnologia", "Restauração", "Outro",
+]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function truncate(s: unknown, n: number): string | null {
+  if (s == null) return null;
+  const str = String(s);
+  return str.length > n ? str.slice(0, n) : str;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.length % 2 ? "0" + hex : hex;
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(clean.substr(i * 2, 2), 16);
+  }
+  return out;
+}
+
+async function verifyMetaSignature(rawBody: string, header: string | null): Promise<boolean> {
+  if (!APP_SECRET || !header || !header.startsWith("sha256=")) return false;
+  const provided = hexToBytes(header.slice(7).trim());
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(APP_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody)),
+  );
+  return timingSafeEqual(provided, sig);
+}
 
 async function sendText(to: string, body: string) {
   try {
