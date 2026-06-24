@@ -15,9 +15,9 @@ export const WA_COUNTRIES: WaCountry[] = [
 ];
 
 // WhatsApp Business Cloud API (Meta) bot number — internacional, sem "+".
-// Configurar via VITE_WHATSAPP_BOT_NUMBER no .env quando o número Meta estiver ativo.
+// Pode ser sobreposto via VITE_WHATSAPP_BOT_NUMBER no .env.
 export const WA_BOT_NUMBER =
-  (import.meta.env.VITE_WHATSAPP_BOT_NUMBER as string | undefined) || "000000000000";
+  (import.meta.env.VITE_WHATSAPP_BOT_NUMBER as string | undefined) || "351938930953";
 
 export const countryForCurrency = (currency: string): WaCountry => {
   const map: Record<string, WaCountry["code"]> = {
