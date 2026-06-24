@@ -210,11 +210,18 @@ Deno.serve(async (req) => {
         return new Response("OK");
       }
 
-      const merchant = parsed.merchant ?? null;
-      const amount   = parsed.amount != null ? Number(parsed.amount) : null;
-      const date     = parsed.date ?? new Date().toISOString().slice(0, 10);
-      const category = parsed.category ?? "Outro";
-      const description = parsed.description ?? null;
+      const merchant = truncate(parsed.merchant, 255);
+      const amountRaw = parsed.amount != null ? Number(parsed.amount) : NaN;
+      const amount = Number.isFinite(amountRaw) && amountRaw > 0 && amountRaw < 1_000_000
+        ? Math.round(amountRaw * 100) / 100
+        : null;
+      const rawDate = typeof parsed.date === "string" ? parsed.date : "";
+      const date = DATE_RE.test(rawDate) && !isNaN(Date.parse(rawDate))
+        ? rawDate
+        : new Date().toISOString().slice(0, 10);
+      const rawCategory = typeof parsed.category === "string" ? parsed.category : "";
+      const category = ALLOWED_CATEGORIES.has(rawCategory) ? rawCategory : "Outro";
+      const description = truncate(parsed.description, 500);
 
       if (!amount || isNaN(amount)) {
         await sendText(from, "❌ Não consegui identificar o valor total da fatura. Tenta outra foto.");
