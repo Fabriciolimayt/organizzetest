@@ -177,7 +177,7 @@ const Index = () => {
                 <Button size="lg" variant="ghost" className="text-base px-6 py-6 text-gray-300 hover:text-white hover:bg-white/5">
                   Veja como funciona
                 </Button>
-              </Link>
+              </a>
             </div>
             <p className="text-xs text-gray-500 flex items-center gap-2">
               <Check size={14} className="text-emerald-400" /> Sem cartão de crédito · 30 dias de teste grátis
