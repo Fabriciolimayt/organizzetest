@@ -226,21 +226,9 @@ Deno.serve(async (req) => {
   if (!waUser) {
     await sendText(
       from,
-
-  // Resolve WhatsApp number → user_id
-  const { data: waUser, error: waErr } = await supabase
-    .from("whatsapp_users")
-    .select("user_id")
-    .eq("phone", from)
-    .maybeSingle();
-
-  if (waErr) console.error("waUser query", waErr);
-
-  if (!waUser) {
-    await sendText(
-      from,
       "⚠️ Número não associado a nenhuma conta. Acede às definições do teu perfil em organizzetest.lovable.app para ligar o teu WhatsApp.",
     );
+    await logEvent({ phone: from, event_type: "unknown_number", success: false, error: "Número sem conta" });
     return new Response("OK");
   }
   const userId: string = waUser.user_id;
