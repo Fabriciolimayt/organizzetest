@@ -146,12 +146,29 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  const logEvent = async (input: {
+    user_id?: string | null; phone?: string | null; event_type: string;
+    success?: boolean; summary?: string | null; error?: string | null;
+  }) => {
+    try {
+      await supabase.from("whatsapp_events").insert({
+        user_id: input.user_id ?? null,
+        phone: input.phone ?? null,
+        event_type: input.event_type,
+        success: input.success ?? true,
+        summary: input.summary ?? null,
+        error: input.error ?? null,
+      });
+    } catch (e) { console.error("logEvent failed", e); }
+  };
+
   // Read raw body and verify Meta signature on every POST
   const rawBody = await req.text();
   const sigHeader = req.headers.get("x-hub-signature-256");
   const sigOk = await verifyMetaSignature(rawBody, sigHeader);
   if (!sigOk) {
     console.warn("invalid or missing x-hub-signature-256");
+    await logEvent({ event_type: "signature_invalid", success: false, error: "Bad or missing x-hub-signature-256" });
     return new Response("Forbidden", { status: 403 });
   }
 
