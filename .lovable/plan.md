@@ -1,33 +1,41 @@
-## Migrar webhook do WhatsApp para a Datafy API
+## Teste do webhook Datafy — resultado
 
-A Datafy é um espelho 1:1 da Meta Cloud API — mudam só a URL base e o token. O resto do código (payload do webhook, parsing Gemini, gravação no Supabase) fica igual.
+Corri dois pedidos contra a edge function `whatsapp-webhook` em produção:
 
-### Mudanças
+**1. GET (simulação do handshake Datafy/Meta)**
+- Enviei `hub.mode=subscribe&hub.verify_token=__probe__&hub.challenge=ping123`
+- Resposta: `403 Forbidden` ✅ (rejeita token errado — só aceita o `WHATSAPP_VERIFY_TOKEN` real)
 
-**1. `supabase/functions/whatsapp-webhook/index.ts`**
-- Trocar `const GRAPH = "https://graph.facebook.com/v19.0"` por `const GRAPH = "https://cloud.datafyapi.com.br/v1"`.
-- Trocar a env var `WHATSAPP_TOKEN` por `DATAFY_TOKEN` (formato `sk_live_xxx`) — usada como `Authorization: Bearer ...` no `sendText`, no `GET /{mediaId}` e no download do binário da imagem.
-- Verificação de assinatura do webhook: a Datafy também envia `x-hub-signature-256`, mas assinada com **o segredo do webhook configurado no painel da Datafy** (não com `WHATSAPP_APP_SECRET` da Meta). Manter a função `verifyMetaSignature` igual e passar a usar a secret `DATAFY_WEBHOOK_SECRET` em vez de `WHATSAPP_APP_SECRET`.
-- Handshake GET (`hub.verify_token`) permanece — usa `WHATSAPP_VERIFY_TOKEN` que tu defines igual no painel da Datafy.
-- `WHATSAPP_PHONE_ID` continua a ser o `phone_number_id` (mesma semântica na Datafy).
+**2. POST (simulação de mensagem recebida)**
+- Enviei payload de mensagem de texto sem assinatura
+- Resposta: `403 Forbidden` ✅
+- Log: `invalid or missing x-hub-signature-256` ✅ (rejeita payloads não assinados)
 
-**2. Secrets**
-- Adicionar **`DATAFY_TOKEN`** (token `sk_live_xxx` do painel Datafy).
-- Adicionar **`DATAFY_WEBHOOK_SECRET`** (segredo do webhook configurado na Datafy — usado para validar `x-hub-signature-256`).
-- Manter `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_PHONE_ID`, `GEMINI_API_KEY`.
-- `WHATSAPP_TOKEN` e `WHATSAPP_APP_SECRET` deixam de ser usados (podem ficar ou ser removidas depois).
+**Conclusão:** o código está vivo, deployed e a aplicar segurança corretamente. Não dá para testar o caminho feliz daqui porque eu não tenho a `DATAFY_WEBHOOK_SECRET` para assinar o payload — só a Datafy consegue.
 
-**3. Frontend**
-- Sem alterações de lógica. O número do bot (`WA_BOT_NUMBER` em `src/lib/countries.ts`) continua `351938930953` — é o número conectado na Datafy, igual ao que o utilizador vê.
-- O painel de "configuração inicial Meta" em `OnboardingWhatsAppVerificar.tsx` passa a apontar para o painel da Datafy:
-  - Callback URL: `https://lxlsrnysjtojnlhvjjew.supabase.co/functions/v1/whatsapp-webhook`
-  - Verify token: valor de `WHATSAPP_VERIFY_TOKEN`
-  - Texto atualizado: "Configura em **Datafy → Webhooks**" em vez de Meta for Developers.
+## Próximo passo (do teu lado, no painel Datafy)
 
-### O que o utilizador faz no painel Datafy
-1. Conecta o número e copia o token `sk_live_xxx`.
-2. Em Webhooks: cola a Callback URL acima, o verify token, e copia o **webhook secret** que a Datafy gerar.
-3. Subscreve o campo `messages`.
+1. Webhooks → Callback URL: `https://lxlsrnysjtojnlhvjjew.supabase.co/functions/v1/whatsapp-webhook`
+2. Verify token: o valor de `WHATSAPP_VERIFY_TOKEN`
+3. Copiar o webhook secret da Datafy e confirmar que bate certo com `DATAFY_WEBHOOK_SECRET`
+4. Subscrever o campo `messages`
+5. Confirmar que `DATAFY_TOKEN` é do número `+351 938 930 953`
 
-### Pergunta antes de avançar
-Confirmas que a Datafy gera um **webhook secret próprio** (para assinar `x-hub-signature-256`)? Se sim, partilha esse valor + o `sk_live_xxx` quando eu pedir via `add_secret`. Se a Datafy reutiliza o `APP_SECRET` da Meta, posso saltar a nova secret e manter `WHATSAPP_APP_SECRET`.
+Depois envia `ajuda` para `+351 938 930 953` no WhatsApp — eu vejo os logs em tempo real para confirmar.
+
+## Opcional — quero propor
+
+Criar uma página interna `/dashboard/diagnostico-whatsapp` (visível só ao utilizador autenticado) que mostre:
+- Estado de cada secret (✅/❌ configurada, sem mostrar valores)
+- Últimos 10 eventos recebidos pelo webhook (data, tipo, número, sucesso/erro)
+- Botão "enviar mensagem de teste" para o teu próprio WhatsApp via Datafy
+
+Isto ajuda-te a debugar sozinho sem dependeres de mim para ver logs.
+
+### Detalhes técnicos
+- Nova edge function `whatsapp-diagnostico` (verify_jwt=true) que lê secrets e tabela `whatsapp_events` (a criar)
+- Tabela `whatsapp_events`: id, user_id, type, payload_summary, success, error, created_at + RLS
+- Webhook passa a inserir nesta tabela cada evento processado
+- Nova página React no dashboard com refresh a cada 5s
+
+Confirmas que queres a página de diagnóstico, ou preferes testar primeiro com a configuração atual?
