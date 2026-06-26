@@ -327,9 +327,11 @@ Deno.serve(async (req) => {
       if (pending?.id) {
         await supabase.from("pending_expenses").delete().eq("id", pending.id);
       }
+      await logEvent({ user_id: userId, phone: from, event_type: "invoice_ok", summary: `${merchant ?? "—"} · ${amount}` });
     } catch (e) {
       console.error("image processing error", e);
       await sendText(from, "❌ Ocorreu um erro ao processar a imagem. Tenta novamente.");
+      await logEvent({ user_id: userId, phone: from, event_type: "invoice_error", success: false, error: (e instanceof Error ? e.message : String(e)).slice(0, 500) });
     }
     return new Response("OK");
   }
