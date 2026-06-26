@@ -1,39 +1,33 @@
-## Objetivo
+## Migrar webhook do WhatsApp para a Datafy API
 
-O backend (`supabase/functions/whatsapp-webhook/index.ts`) já está 100% em Meta WhatsApp Cloud API (verificação `hub.challenge`, assinatura `x-hub-signature-256`, envio via `graph.facebook.com`, secrets `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` já configuradas). O que ainda fala em "Twilio Sandbox" é só o frontend de onboarding. Esta mudança é apenas de UI/copy + número do bot.
+A Datafy é um espelho 1:1 da Meta Cloud API — mudam só a URL base e o token. O resto do código (payload do webhook, parsing Gemini, gravação no Supabase) fica igual.
 
-## Mudanças
+### Mudanças
 
-### 1. `src/lib/countries.ts`
-- Renomear `WA_BOT_NUMBER` para passar a representar o número Meta da Organizze (placeholder configurável). Como o número real do Meta ainda não está definido, expor via `import.meta.env.VITE_WHATSAPP_BOT_NUMBER` com fallback para um placeholder claro (`"000000000000"`) e adicionar comentário a explicar.
-- Manter resto do ficheiro intacto.
+**1. `supabase/functions/whatsapp-webhook/index.ts`**
+- Trocar `const GRAPH = "https://graph.facebook.com/v19.0"` por `const GRAPH = "https://cloud.datafyapi.com.br/v1"`.
+- Trocar a env var `WHATSAPP_TOKEN` por `DATAFY_TOKEN` (formato `sk_live_xxx`) — usada como `Authorization: Bearer ...` no `sendText`, no `GET /{mediaId}` e no download do binário da imagem.
+- Verificação de assinatura do webhook: a Datafy também envia `x-hub-signature-256`, mas assinada com **o segredo do webhook configurado no painel da Datafy** (não com `WHATSAPP_APP_SECRET` da Meta). Manter a função `verifyMetaSignature` igual e passar a usar a secret `DATAFY_WEBHOOK_SECRET` em vez de `WHATSAPP_APP_SECRET`.
+- Handshake GET (`hub.verify_token`) permanece — usa `WHATSAPP_VERIFY_TOKEN` que tu defines igual no painel da Datafy.
+- `WHATSAPP_PHONE_ID` continua a ser o `phone_number_id` (mesma semântica na Datafy).
 
-### 2. `src/pages/OnboardingWhatsAppVerificar.tsx`
-- Remover todo o bloco "Twilio Sandbox":
-  - Tirar o `<details>` com instruções Twilio.
-  - Tirar o passo 1 "join &lt;código&gt;" — Meta Cloud API não exige opt-in sandbox.
-- Reescrever para fluxo Meta em **1 passo**:
-  - Mostra o código de verificação.
-  - Botão "Abrir WhatsApp com o código" usando `wa.me/<numero>?text=<codigo>`.
-  - Texto explicativo: "Envia este código para o nosso WhatsApp. Vamos detetar a tua mensagem automaticamente."
-- Manter o polling do Supabase (já compatível — webhook Meta já grava `verified_at`).
-- Manter o `<details>` técnico mas trocar instruções de Twilio para Meta: URL do webhook + `WHATSAPP_VERIFY_TOKEN`, a configurar em *Meta for Developers → WhatsApp → Configuration → Webhook* (apenas para o dono da app).
+**2. Secrets**
+- Adicionar **`DATAFY_TOKEN`** (token `sk_live_xxx` do painel Datafy).
+- Adicionar **`DATAFY_WEBHOOK_SECRET`** (segredo do webhook configurado na Datafy — usado para validar `x-hub-signature-256`).
+- Manter `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_PHONE_ID`, `GEMINI_API_KEY`.
+- `WHATSAPP_TOKEN` e `WHATSAPP_APP_SECRET` deixam de ser usados (podem ficar ou ser removidas depois).
 
-### 3. `src/pages/OnboardingWhatsApp.tsx`
-- Sem alterações funcionais (já é agnóstico de provider). Apenas remover qualquer menção textual a "Twilio" se existir (não existe atualmente).
+**3. Frontend**
+- Sem alterações de lógica. O número do bot (`WA_BOT_NUMBER` em `src/lib/countries.ts`) continua `351938930953` — é o número conectado na Datafy, igual ao que o utilizador vê.
+- O painel de "configuração inicial Meta" em `OnboardingWhatsAppVerificar.tsx` passa a apontar para o painel da Datafy:
+  - Callback URL: `https://lxlsrnysjtojnlhvjjew.supabase.co/functions/v1/whatsapp-webhook`
+  - Verify token: valor de `WHATSAPP_VERIFY_TOKEN`
+  - Texto atualizado: "Configura em **Datafy → Webhooks**" em vez de Meta for Developers.
 
-### 4. `src/pages/DashboardWhatsApp.tsx`
-- Usar o novo `WA_BOT_NUMBER` no cabeçalho do chat (já importa, nada a mudar além do valor que vem do lib).
+### O que o utilizador faz no painel Datafy
+1. Conecta o número e copia o token `sk_live_xxx`.
+2. Em Webhooks: cola a Callback URL acima, o verify token, e copia o **webhook secret** que a Datafy gerar.
+3. Subscreve o campo `messages`.
 
-### 5. Backend
-- Nenhuma alteração. Já está em Meta.
-
-## Detalhes técnicos
-
-- **Polling de verificação**: continua a usar `whatsapp_links.verify_code` → `verified_at`. O webhook Meta, ao receber a primeira mensagem com o código, faz `update` desta linha (já implementado na versão Meta do webhook — confirmar/ajustar se necessário num passo de implementação).
-- **Número do bot Meta**: precisa ser definido pelo dono da app. Será lido de `VITE_WHATSAPP_BOT_NUMBER` (não-secret, pode ir no `.env` quando o utilizador fornecer). Até lá, UI mostra placeholder e instrução clara.
-- **Sem nova secret necessária** — todas as secrets Meta já existem.
-
-## Pergunta antes de implementar
-
-Tens o **número de telefone WhatsApp Business** que aparece no Meta for Developers (o número associado ao `WHATSAPP_PHONE_ID`) para colocar como número do bot que os utilizadores vão contactar? Se sim, partilha-o no formato internacional (ex: `351912345678`, sem `+`).
+### Pergunta antes de avançar
+Confirmas que a Datafy gera um **webhook secret próprio** (para assinar `x-hub-signature-256`)? Se sim, partilha esse valor + o `sk_live_xxx` quando eu pedir via `add_secret`. Se a Datafy reutiliza o `APP_SECRET` da Meta, posso saltar a nova secret e manter `WHATSAPP_APP_SECRET`.

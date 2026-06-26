@@ -4,15 +4,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN")!;
-const WA_TOKEN     = Deno.env.get("WHATSAPP_TOKEN")!;
+// Datafy API token (sk_live_xxx). Fallback to legacy WHATSAPP_TOKEN if present.
+const WA_TOKEN     = Deno.env.get("DATAFY_TOKEN") ?? Deno.env.get("WHATSAPP_TOKEN")!;
 const PHONE_ID     = Deno.env.get("WHATSAPP_PHONE_ID")!;
 const GEMINI_KEY   = Deno.env.get("GEMINI_API_KEY")!;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const APP_SECRET   = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
+// Webhook signing secret. Datafy issues its own; falls back to Meta APP_SECRET.
+const APP_SECRET   = Deno.env.get("DATAFY_WEBHOOK_SECRET") ?? Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
 
-const GRAPH = "https://graph.facebook.com/v19.0";
+// Datafy mirrors Meta Cloud API 1:1. Swap base URL + token, payloads identical.
+const GRAPH = "https://cloud.datafyapi.com.br/v1";
 
 const ALLOWED_CATEGORIES = new Set([
   "Alimentação", "Transportes", "Saúde", "Lazer",
