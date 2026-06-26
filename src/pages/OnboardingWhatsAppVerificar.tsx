@@ -102,11 +102,11 @@ const OnboardingWhatsAppVerificar = () => {
         {/* Setup info (one-time, for app owner) */}
         <details className="rounded-xl border border-dashed border-border bg-card/50 p-3 mb-4 text-sm">
           <summary className="cursor-pointer font-medium text-foreground">
-            ⚙️ Configuração inicial Meta (uma vez só)
+            ⚙️ Configuração inicial Datafy (uma vez só)
           </summary>
           <div className="mt-3 space-y-2 text-muted-foreground">
             <p>
-              Em <strong>Meta for Developers → WhatsApp → Configuration → Webhook</strong>, define:
+              No painel <strong>Datafy → Webhooks</strong>, define:
             </p>
             <div className="space-y-1">
               <div className="text-xs uppercase tracking-wider">Callback URL</div>
@@ -122,7 +122,8 @@ const OnboardingWhatsAppVerificar = () => {
               <strong>Verify token:</strong> usa o valor de <code>WHATSAPP_VERIFY_TOKEN</code> configurado nas secrets do projeto.
             </p>
             <p className="text-xs">
-              Subscreve o campo <code>messages</code> em <em>Webhook fields</em>.
+              Copia o <strong>webhook secret</strong> gerado pela Datafy e guarda como <code>DATAFY_WEBHOOK_SECRET</code>.
+              Subscreve o campo <code>messages</code>.
             </p>
           </div>
         </details>
