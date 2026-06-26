@@ -23,6 +23,7 @@ import DashboardOrcamento from "./pages/DashboardOrcamento";
 import DashboardPlanos from "./pages/DashboardPlanos";
 import DashboardGrupos from "./pages/DashboardGrupos";
 import DashboardWhatsApp from "./pages/DashboardWhatsApp";
+import DashboardDiagnosticoWhatsApp from "./pages/DashboardDiagnosticoWhatsApp";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="planos" element={<DashboardPlanos />} />
               <Route path="grupos" element={<DashboardGrupos />} />
               <Route path="whatsapp" element={<DashboardWhatsApp />} />
+              <Route path="diagnostico-whatsapp" element={<DashboardDiagnosticoWhatsApp />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

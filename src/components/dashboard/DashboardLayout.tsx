@@ -13,6 +13,7 @@ const navLinks = [
   { to: "/dashboard/grupos", label: "grupos" },
   { to: "/dashboard/whatsapp", label: "whatsapp" },
   { to: "/dashboard/limite-de-gastos", label: "limites" },
+  { to: "/dashboard/diagnostico-whatsapp", label: "diagnóstico" },
 ];
 
 const DashboardLayout = () => {
