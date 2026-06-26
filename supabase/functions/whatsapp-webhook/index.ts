@@ -205,12 +205,27 @@ Deno.serve(async (req) => {
         .upsert({ user_id: link.user_id, phone: from }, { onConflict: "phone" });
 
       await sendText(from, "✅ WhatsApp ligado à tua conta Organizze! Envia uma foto de uma fatura para começar.");
+      await logEvent({ user_id: link.user_id, phone: from, event_type: "verify_ok", summary: "Número ligado à conta" });
       return new Response("OK");
     }
 
     await sendText(from, "⚠️ Código inválido ou expirado. Tenta novamente a partir da app.");
+    await logEvent({ phone: from, event_type: "verify_invalid", success: false, error: "Código não encontrado" });
     return new Response("OK");
   }
+
+  // Resolve WhatsApp number → user_id
+  const { data: waUser, error: waErr } = await supabase
+    .from("whatsapp_users")
+    .select("user_id")
+    .eq("phone", from)
+    .maybeSingle();
+
+  if (waErr) console.error("waUser query", waErr);
+
+  if (!waUser) {
+    await sendText(
+      from,
 
   // Resolve WhatsApp number → user_id
   const { data: waUser, error: waErr } = await supabase
