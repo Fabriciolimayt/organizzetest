@@ -218,7 +218,7 @@ const Index = () => {
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="flex flex-col gap-7">
             {/* Logo Component Added */}
-            <AnimatedLogo />
+            
 
             <span className="text-sm font-semibold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
               <span className="w-8 h-px bg-emerald-400"></span>
