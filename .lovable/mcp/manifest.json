@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://lxlsrnysjtojnlhvjjew.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "organizze-mcp",
+      "version": "0.1.0",
+      "title": "Organizze"
+    },
+    "tools": [
+      {
+        "name": "list_expenses",
+        "title": "List expenses",
+        "description": "List the signed-in user's expenses, most recent first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Max rows to return (default 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "category": {
+              "description": "Filter by exact category name.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_expense",
+        "title": "Create expense",
+        "description": "Create a new expense entry for the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Expense amount (positive number)."
+            },
+            "category": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Category name, e.g. 'alimentação'."
+            },
+            "merchant": {
+              "description": "Merchant / store name.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Free-form note.",
+              "type": "string"
+            },
+            "occurred_at": {
+              "description": "ISO timestamp when the expense occurred. Defaults to now.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "amount",
+            "category"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "monthly_summary",
+        "title": "Monthly expense summary",
+        "description": "Return total spend and per-category breakdown for a given month (defaults to current).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "year": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "month": {
+              "description": "1-12",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
