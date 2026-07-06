@@ -34,7 +34,9 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const from = (location.state as { from?: string } | null)?.from || "/dashboard";
+  const nextParam = new URLSearchParams(location.search).get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
+  const from = safeNext || (location.state as { from?: string } | null)?.from || "/dashboard";
 
   useEffect(() => {
     if (session) navigate(from, { replace: true });
@@ -54,7 +56,7 @@ const Auth = () => {
         const { error } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
-          options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+          options: { emailRedirectTo: `${window.location.origin}${from}` },
         });
         if (error) throw error;
         try { localStorage.setItem("organizze.firstRun", "1"); localStorage.removeItem("organizze.tourCompleted"); } catch {}
@@ -77,7 +79,7 @@ const Auth = () => {
   const handleGoogle = async () => {
     setBusy(true);
     try {
-      const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
+      const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}${from}` });
       if (res.error) throw res.error;
     } catch (err: any) {
       toast({ title: "Erro Google", description: err.message || "Algo falhou", variant: "destructive" });

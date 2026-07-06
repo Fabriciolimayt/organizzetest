@@ -24,6 +24,7 @@ import DashboardPlanos from "./pages/DashboardPlanos";
 import DashboardGrupos from "./pages/DashboardGrupos";
 import DashboardWhatsApp from "./pages/DashboardWhatsApp";
 import DashboardDiagnosticoWhatsApp from "./pages/DashboardDiagnosticoWhatsApp";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <TourProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/signup" element={<Navigate to="/auth" replace />} />
             <Route path="/onboarding/nome" element={<Protected><OnboardingNome /></Protected>} />
