@@ -8,13 +8,12 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     fontFamily: {
-      sans: ['Inter', 'sans-serif'],
-      serif: ['Fraunces', 'Georgia', 'serif'],
+      sans: ['"Work Sans"', "system-ui", "sans-serif"],
+      serif: ['"Instrument Serif"', '"Fraunces"', "Georgia", "serif"],
+      display: ['"Instrument Serif"', "Georgia", "serif"],
     },
     extend: {
       colors: {
@@ -26,6 +25,7 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -51,6 +51,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
+        cream: "hsl(var(--cream))",
+        emerald: {
+          deep: "hsl(var(--emerald-deep))",
+        },
         "app-bg": "hsl(var(--app-bg))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -70,30 +78,22 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
-        float: {
+        floaty: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-12px)" },
         },
       },
-      },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        float: "float 6s ease-in-out infinite",
+        floaty: "floaty 6s ease-in-out infinite",
       },
     },
   },
