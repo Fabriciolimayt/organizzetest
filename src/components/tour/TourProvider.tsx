@@ -84,7 +84,7 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <Ctx.Provider value={value}>
       {children}
-      {open && <TourRunner onClose={close} />}
+      {open && <TourRunner onClose={close} onComplete={complete} />}
     </Ctx.Provider>
   );
 };
