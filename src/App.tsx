@@ -59,6 +59,7 @@ const App = () => (
               <Route path="grupos" element={<DashboardGrupos />} />
               <Route path="whatsapp" element={<DashboardWhatsApp />} />
               <Route path="diagnostico-whatsapp" element={<DashboardDiagnosticoWhatsApp />} />
+              <Route path="assinatura" element={<DashboardAssinatura />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
