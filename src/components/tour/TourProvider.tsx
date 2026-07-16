@@ -39,9 +39,18 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  // Skip / close WITHOUT marking completed — the tour re-arms on next login.
   const close = useCallback(() => {
     setOpen(false);
-    try { localStorage.setItem(COMPLETED_KEY, "1"); localStorage.removeItem(FIRSTRUN_KEY); } catch {}
+  }, []);
+
+  // Only a full walkthrough (last step reached) marks the tour as completed.
+  const complete = useCallback(() => {
+    setOpen(false);
+    try {
+      localStorage.setItem(COMPLETED_KEY, "1");
+      localStorage.removeItem(FIRSTRUN_KEY);
+    } catch {}
   }, []);
 
   const start = useCallback(() => {
@@ -50,14 +59,13 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
     setOpen(true);
   }, [navigate, location.pathname]);
 
-  // Auto-start once for new users when they hit the dashboard
+  // Auto-start for new users whenever they land inside the app until they finish it.
   useEffect(() => {
     if (!location.pathname.startsWith("/dashboard")) return;
     try {
       const firstRun = localStorage.getItem(FIRSTRUN_KEY);
       const done = localStorage.getItem(COMPLETED_KEY);
       if (firstRun === "1" && !done) {
-        // small delay so the dashboard mounts and `data-tour` nodes exist
         const t = setTimeout(() => setOpen(true), 600);
         return () => clearTimeout(t);
       }
