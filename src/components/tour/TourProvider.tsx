@@ -93,13 +93,12 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
  * Owns the current step index, navigates between routes, waits for the target
  * element to appear before passing the step to the overlay.
  */
-const TourRunner = ({ onClose }: { onClose: () => void }) => {
+const TourRunner = ({ onClose, onComplete }: { onClose: () => void; onComplete: () => void }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [index, setIndex] = useState(0);
   const [readyStep, setReadyStep] = useState<GlobalTourStep | null>(null);
 
-  // Whenever the index changes, navigate (if needed) and wait for the target
   useEffect(() => {
     const step = GLOBAL_TOUR_STEPS[index];
     if (!step) return;
@@ -108,7 +107,6 @@ const TourRunner = ({ onClose }: { onClose: () => void }) => {
     const ensureRoute = async () => {
       if (step.route && location.pathname !== step.route) {
         navigate(step.route);
-        // wait for next route to render
         await new Promise((r) => setTimeout(r, 350));
       }
       if (cancelled) return;
@@ -116,7 +114,6 @@ const TourRunner = ({ onClose }: { onClose: () => void }) => {
         setReadyStep(step);
         return;
       }
-      // poll for target up to 2s
       const deadline = Date.now() + 2000;
       while (Date.now() < deadline) {
         if (document.querySelector(step.target)) break;
@@ -130,7 +127,6 @@ const TourRunner = ({ onClose }: { onClose: () => void }) => {
   }, [index]);
 
   if (!readyStep) {
-    // tiny loading shim
     return (
       <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center">
         <div className="bg-card rounded-xl px-4 py-3 text-sm border border-border shadow-lg">
@@ -140,8 +136,6 @@ const TourRunner = ({ onClose }: { onClose: () => void }) => {
     );
   }
 
-  // Build a synthetic 1-step overlay (so TourOverlay measurement/popover code is reused)
-  // but we control prev/next via wrapper buttons by re-keying.
   return (
     <SingleStepOverlay
       step={readyStep}
@@ -149,7 +143,7 @@ const TourRunner = ({ onClose }: { onClose: () => void }) => {
       total={GLOBAL_TOUR_STEPS.length}
       onPrev={() => setIndex((i) => Math.max(0, i - 1))}
       onNext={() => {
-        if (index >= GLOBAL_TOUR_STEPS.length - 1) onClose();
+        if (index >= GLOBAL_TOUR_STEPS.length - 1) onComplete();
         else { setReadyStep(null); setIndex((i) => i + 1); }
       }}
       onClose={onClose}
