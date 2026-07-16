@@ -1,41 +1,87 @@
-## Teste do webhook Datafy — resultado
+# Plano de melhorias — Organizze
 
-Corri dois pedidos contra a edge function `whatsapp-webhook` em produção:
+## 1. Pagamentos Stripe (multi-moeda)
 
-**1. GET (simulação do handshake Datafy/Meta)**
-- Enviei `hub.mode=subscribe&hub.verify_token=__probe__&hub.challenge=ping123`
-- Resposta: `403 Forbidden` ✅ (rejeita token errado — só aceita o `WHATSAPP_VERIFY_TOKEN` real)
+Ativar **Lovable Payments (Stripe)** — sem chave BYOK, com compliance gerido.
 
-**2. POST (simulação de mensagem recebida)**
-- Enviei payload de mensagem de texto sem assinatura
-- Resposta: `403 Forbidden` ✅
-- Log: `invalid or missing x-hub-signature-256` ✅ (rejeita payloads não assinados)
+**Catálogo:**
+- `Free` — €0 (sem checkout, plano padrão)
+- `Pro` — €9 / mês
+- `Premium` — €19 / mês
 
-**Conclusão:** o código está vivo, deployed e a aplicar segurança corretamente. Não dá para testar o caminho feliz daqui porque eu não tenho a `DATAFY_WEBHOOK_SECRET` para assinar o payload — só a Datafy consegue.
+**Multi-moeda:** cada preço criado nas 4 moedas (EUR, BRL, USD, MZN) com conversão aproximada:
+- Pro: €9 / R$49 / $9.99 / 599 MZN
+- Premium: €19 / R$99 / $19.99 / 1.199 MZN
 
-## Próximo passo (do teu lado, no painel Datafy)
+A moeda apresentada no checkout segue a escolhida no onboarding (`organizze.currency` → localStorage).
 
-1. Webhooks → Callback URL: `https://lxlsrnysjtojnlhvjjew.supabase.co/functions/v1/whatsapp-webhook`
-2. Verify token: o valor de `WHATSAPP_VERIFY_TOKEN`
-3. Copiar o webhook secret da Datafy e confirmar que bate certo com `DATAFY_WEBHOOK_SECRET`
-4. Subscrever o campo `messages`
-5. Confirmar que `DATAFY_TOKEN` é do número `+351 938 930 953`
+**Fluxo técnico:**
+- `enable_stripe_payments` + `batch_create_product` (3 preços × 4 moedas)
+- Nova página `/dashboard/planos-assinatura` com 3 cards → botão "Assinar" chama edge function `create-checkout`
+- Edge function `stripe-webhook` regista status em nova tabela `subscriptions (user_id, plan, status, current_period_end, currency)`
+- Hook `useSubscription()` para gating de features Pro/Premium
 
-Depois envia `ajuda` para `+351 938 930 953` no WhatsApp — eu vejo os logs em tempo real para confirmar.
+## 2. Tour obrigatório para novos utilizadores
 
-## Opcional — quero propor
+Regra: qualquer novo signup (Email, Google, futuro Apple) marca `firstRun=1` → ao aterrar em `/dashboard`, o `TourProvider` inicia automaticamente.
 
-Criar uma página interna `/dashboard/diagnostico-whatsapp` (visível só ao utilizador autenticado) que mostre:
-- Estado de cada secret (✅/❌ configurada, sem mostrar valores)
-- Últimos 10 eventos recebidos pelo webhook (data, tipo, número, sucesso/erro)
-- Botão "enviar mensagem de teste" para o teu próprio WhatsApp via Datafy
+**Comportamento:**
+- Overlay com passo-a-passo por todas as tabs (Overview → Lançamentos → Orçamento → Planos → Grupos → WhatsApp)
+- Botão **"Saltar"** disponível em cada passo
+- Se saltar sem chegar ao fim: `tourCompleted` fica `false` → volta no próximo login
+- Só desaparece definitivamente ao clicar **"Concluir"** no último passo (`tourCompleted=true`)
 
-Isto ajuda-te a debugar sozinho sem dependeres de mim para ver logs.
+**Implementação:**
+- Detecção de "novo user" no `AuthProvider`: comparar `created_at` do user com `last_sign_in_at`; se iguais → set `firstRun=1`
+- Isto cobre Google/Email/qualquer provider, sem depender do formulário de signup
+- `TourProvider` já existe — adicionar lógica de re-arme por login enquanto `!tourCompleted`
 
-### Detalhes técnicos
-- Nova edge function `whatsapp-diagnostico` (verify_jwt=true) que lê secrets e tabela `whatsapp_events` (a criar)
-- Tabela `whatsapp_events`: id, user_id, type, payload_summary, success, error, created_at + RLS
-- Webhook passa a inserir nesta tabela cada evento processado
-- Nova página React no dashboard com refresh a cada 5s
+## 3. Redesign visual — Editorial Verde Escuro
 
-Confirmas que queres a página de diagnóstico, ou preferes testar primeiro com a configuração atual?
+**Design tokens (index.css):**
+```
+--background: 155 45% 6%      /* #0a1f14 */
+--foreground: 45 40% 92%      /* #f5f0e0 cream */
+--primary:    162 82% 27%     /* #0d7a5f esmeralda */
+--accent:     45 55% 54%      /* #c9a84c dourado */
+--card:       155 40% 9%
+--muted:      155 20% 15%
+```
+Tipografia: **Instrument Serif** (headings/hero) + **Work Sans** (body/UI). Substituir Fraunces/Inter no `index.css` e `tailwind.config.ts`.
+
+**Páginas atualizadas:**
+- **Landing (`Index.tsx`)** — hero com serif grande + kicker dourado, mockup em cartão escuro com borda dourada fina, secções com muito whitespace, divisores sutis em `--accent/20`
+- **Header** — transparente sobre hero, sticky escuro após scroll
+- **Auth** — cartão escuro sobre fundo esverdeado, foco no CTA dourado
+- **Onboarding wizard** — header verde escuro, progresso dourado, tipografia serif nos títulos
+- **Dashboard** — cards com `bg-card`, headings serif, KPI numbers grandes em Instrument Serif; donut e gráficos com paleta esmeralda→dourado
+- **Nova página de Assinatura** — 3 cards, o do meio (Pro) com destaque dourado + selo "Mais popular"
+
+**Micro-interações:** hover suave (`transition-all duration-300`), underline animado nos links do nav, cards com `hover:border-accent/40`.
+
+## Detalhes técnicos
+
+**Ficheiros a criar:**
+- `src/pages/DashboardAssinatura.tsx`
+- `src/hooks/useSubscription.tsx`
+- `supabase/functions/create-checkout/index.ts`
+- `supabase/functions/stripe-webhook/index.ts`
+- Migration: tabela `subscriptions` com RLS + GRANT
+
+**Ficheiros a editar:**
+- `src/index.css` + `tailwind.config.ts` (paleta + fontes)
+- `src/pages/Index.tsx` (redesign completo landing)
+- `src/pages/Auth.tsx`, `OnboardingNome.tsx`, `OnboardingIdioma.tsx`, `OnboardingMoeda.tsx`, `OnboardingWhatsApp.tsx`
+- `src/components/onboarding/OnboardingWizardLayout.tsx`
+- `src/components/LandingHeader.tsx`
+- `src/pages/Dashboard.tsx` + restantes páginas do dashboard (tokens semânticos, sem hardcode)
+- `src/hooks/useAuth.tsx` (deteção de novo user via `created_at===last_sign_in_at`)
+- `src/components/tour/TourProvider.tsx` (skip + re-arme)
+- `src/App.tsx` (rota `/dashboard/assinatura`)
+- `src/components/dashboard/DashboardLayout.tsx` (link Assinatura)
+
+**Ordem de execução:**
+1. Redesign de tokens + fontes (base visual)
+2. Atualizar landing, auth, onboarding e dashboard para novos tokens
+3. Lógica de tour obrigatório com skip
+4. Ativar Stripe + produtos + página de assinatura + webhook
