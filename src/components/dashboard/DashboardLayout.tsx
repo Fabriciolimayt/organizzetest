@@ -14,6 +14,7 @@ const navLinks = [
   { to: "/dashboard/whatsapp", label: "whatsapp" },
   { to: "/dashboard/limite-de-gastos", label: "limites" },
   { to: "/dashboard/diagnostico-whatsapp", label: "diagnóstico" },
+  { to: "/dashboard/assinatura", label: "assinatura" },
 ];
 
 const DashboardLayout = () => {
