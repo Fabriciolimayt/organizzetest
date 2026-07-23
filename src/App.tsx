@@ -24,7 +24,7 @@ import DashboardPlanos from "./pages/DashboardPlanos";
 import DashboardGrupos from "./pages/DashboardGrupos";
 import DashboardWhatsApp from "./pages/DashboardWhatsApp";
 import DashboardDiagnosticoWhatsApp from "./pages/DashboardDiagnosticoWhatsApp";
-import DashboardAssinatura from "./pages/DashboardAssinatura";
+
 import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
