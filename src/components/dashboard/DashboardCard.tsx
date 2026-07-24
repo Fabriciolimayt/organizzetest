@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReactNode } from "react";
 
 interface DashboardCardProps {
@@ -10,15 +9,15 @@ interface DashboardCardProps {
 }
 
 const DashboardCard = ({ title, headerRight, children, className = "", noPadding }: DashboardCardProps) => (
-  <Card className={`shadow-sm border-border/50 ${className}`}>
+  <div className={`glass-card transition-shadow hover:shadow-[0_0_40px_-10px_hsl(var(--primary)/0.35)] ${className}`}>
     {title && (
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base font-semibold">{title}</CardTitle>
+      <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight">{title}</h3>
         {headerRight}
-      </CardHeader>
+      </div>
     )}
-    <CardContent className={noPadding ? "p-0" : ""}>{children}</CardContent>
-  </Card>
+    <div className={noPadding ? "" : "p-5"}>{children}</div>
+  </div>
 );
 
 export default DashboardCard;
