@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
+import Blobs from "@/components/Blobs";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -37,25 +38,32 @@ const OnboardingWizardLayout = ({
   const handleBack = onBack ?? (() => navigate(-1));
 
   return (
-    <div className="min-h-screen flex flex-col bg-app-bg">
-      {/* Green header */}
-      <header className="bg-primary py-4 px-6">
-        <Logo white />
+    <div className="min-h-screen flex flex-col relative">
+      <div className="fixed inset-0 -z-10">
+        <Blobs />
+      </div>
+
+      {/* Glass header */}
+      <header className="glass-panel py-4 px-6 border-b border-[hsl(var(--glass-border))]">
+        <Logo />
       </header>
 
-      {/* Progress bar */}
-      <div className="h-1 w-full bg-primary/20">
+      {/* Progress bar w/ gradient */}
+      <div className="h-1 w-full bg-[hsl(var(--glass-bg))]">
         <div
-          className="h-full bg-primary transition-all"
-          style={{ width: `${progress}%` }}
+          className="h-full transition-all"
+          style={{
+            width: `${progress}%`,
+            background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-glow)), hsl(var(--gold)))",
+            boxShadow: "0 0 12px hsl(var(--primary-glow) / 0.6)",
+          }}
         />
       </div>
 
-      {/* Top row */}
       <div className="px-6 py-4 flex items-center justify-between text-sm">
         <button
           onClick={handleBack}
-          className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-1 text-foreground/80 hover:text-primary-glow transition-colors"
         >
           <ChevronLeft size={16} /> Voltar
         </button>
@@ -65,10 +73,10 @@ const OnboardingWizardLayout = ({
               key={i}
               className={`h-1.5 rounded-full transition-all ${
                 i + 1 === step
-                  ? "w-6 bg-primary"
+                  ? "w-6 bg-gradient-to-r from-primary to-primary-glow"
                   : i + 1 < step
-                  ? "w-1.5 bg-primary"
-                  : "w-1.5 bg-muted"
+                  ? "w-1.5 bg-primary/80"
+                  : "w-1.5 bg-[hsl(var(--glass-border))]"
               }`}
             />
           ))}
@@ -78,27 +86,29 @@ const OnboardingWizardLayout = ({
         </span>
       </div>
 
-      {/* Content */}
       <main className="flex-1 px-6 pb-32 max-w-2xl w-full mx-auto">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center text-primary-foreground mb-5 glow-primary"
+          style={{ background: "var(--gradient-primary)" }}
+        >
           {icon}
         </div>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2 font-serif">
+        <h1 className="text-4xl md:text-5xl font-normal text-foreground tracking-tight mb-3 font-serif leading-[1.05]">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-muted-foreground mb-8">{subtitle}</p>
+          <p className="text-muted-foreground mb-8 text-lg">{subtitle}</p>
         )}
         <div className="mt-6">{children}</div>
       </main>
 
-      {/* Sticky footer */}
-      <div className="fixed bottom-0 inset-x-0 bg-app-bg/95 backdrop-blur border-t border-border px-6 py-4">
+      {/* Sticky glass footer */}
+      <div className="fixed bottom-0 inset-x-0 glass-panel border-t border-[hsl(var(--glass-border))] px-6 py-4">
         <div className="max-w-2xl mx-auto space-y-3">
           <div className="flex items-center gap-3">
             <button
               onClick={handleBack}
-              className="w-12 h-12 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors shrink-0"
+              className="btn-glass w-12 h-12 rounded-full flex items-center justify-center shrink-0"
               aria-label="Voltar"
             >
               <ChevronLeft size={18} />

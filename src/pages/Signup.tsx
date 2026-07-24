@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
+import Blobs from "@/components/Blobs";
 import InputField from "@/components/InputField";
 import SocialLoginButton from "@/components/SocialLoginButton";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,19 @@ const Signup = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-app-bg p-4">
-      <div className="w-full max-w-md bg-card rounded-2xl shadow-lg p-8 flex flex-col items-center gap-6">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="fixed inset-0 -z-10">
+        <Blobs variant="hero" />
+      </div>
+
+      <div className="w-full max-w-md glass-card p-8 flex flex-col items-center gap-6 relative">
         <Logo />
-        <h1 className="text-2xl font-bold text-foreground">Crie sua conta como quiser</h1>
+        <div className="text-center">
+          <h1 className="font-serif text-3xl font-normal text-foreground tracking-tight">
+            Crie sua conta <span className="text-gradient-gold">como quiser</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">Comece o seu plano em menos de um minuto.</p>
+        </div>
 
         <div className="w-full flex flex-col gap-3">
           <SocialLoginButton icon={<FacebookIcon />}>
@@ -39,14 +49,12 @@ const Signup = () => {
           </SocialLoginButton>
         </div>
 
-        {/* Separator */}
         <div className="w-full flex items-center gap-4">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-sm text-muted-foreground">ou</span>
-          <div className="flex-1 h-px bg-border" />
+          <div className="flex-1 h-px bg-[hsl(var(--glass-border))]" />
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">ou</span>
+          <div className="flex-1 h-px bg-[hsl(var(--glass-border))]" />
         </div>
 
-        {/* Form */}
         <form className="w-full flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (agreed) navigate("/onboarding/nome"); }}>
           <InputField label="Seu e-mail" type="email" placeholder="seuemail@exemplo.com" />
           <div className="grid grid-cols-2 gap-3">
@@ -63,18 +71,18 @@ const Signup = () => {
             />
             <span className="text-sm text-muted-foreground">
               Li e concordo com os{" "}
-              <a href="#" className="text-primary hover:underline">termos de uso</a>.
+              <a href="#" className="text-primary-glow hover:underline">termos de uso</a>.
             </span>
           </label>
 
-          <Button disabled={!agreed} size="lg" className="w-full text-base py-6">
+          <Button disabled={!agreed} size="lg" className="w-full">
             Começar a usar
           </Button>
         </form>
 
         <p className="text-sm text-muted-foreground">
           Já sou cadastrado.{" "}
-          <Link to="/" className="text-primary hover:underline font-medium">
+          <Link to="/" className="text-primary-glow hover:underline font-medium">
             Quero fazer login!
           </Link>
         </p>
