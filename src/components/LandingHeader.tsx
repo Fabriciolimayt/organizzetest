@@ -17,25 +17,24 @@ const LandingHeader = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="w-full py-4 px-6 lg:px-12">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="w-full sticky top-0 z-50 glass-panel border-b border-[hsl(var(--glass-border))]">
+      <div className="max-w-7xl mx-auto py-3 px-6 lg:px-12 flex items-center justify-between">
         <Logo />
-        
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-8">
+
+        <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-[hsl(var(--glass-highlight))] px-3 py-1.5 rounded-full transition-all"
             >
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-4">
-          <Link to="/signup" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+        <div className="hidden lg:flex items-center gap-3">
+          <Link to="/signup" className="text-sm font-medium text-foreground/80 hover:text-primary-glow transition-colors">
             Login
           </Link>
           <Link to="/signup">
@@ -43,17 +42,15 @@ const LandingHeader = () => {
           </Link>
         </div>
 
-        {/* Mobile toggle */}
-        <button className="lg:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button className="lg:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
-        <div className="lg:hidden mt-4 pb-4 flex flex-col gap-4 px-2">
+        <div className="lg:hidden pb-4 px-6 flex flex-col gap-3 border-t border-[hsl(var(--glass-border))]">
           {navLinks.map((link) => (
-            <a key={link.label} href={link.href} className="text-sm font-medium text-muted-foreground">
+            <a key={link.label} href={link.href} className="text-sm font-medium text-foreground/80 pt-2">
               {link.label}
             </a>
           ))}
