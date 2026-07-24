@@ -1,87 +1,70 @@
-# Plano de melhorias — Organizze
+# Estética Aave adaptada — verde esmeralda + glassmorphism total
 
-## 1. Pagamentos Stripe (multi-moeda)
+Aplicar a linguagem visual do Aave (glassmorphism denso, gradientes conic, blobs animados, cards translúcidos, tipografia moderna) mantendo a paleta verde esmeralda + gold já existente. Intensidade máxima: blobs animados, blur pesado, glow, gradientes conic.
 
-Ativar **Lovable Payments (Stripe)** — sem chave BYOK, com compliance gerido.
+## Design system (base de tudo)
 
-**Catálogo:**
-- `Free` — €0 (sem checkout, plano padrão)
-- `Pro` — €9 / mês
-- `Premium` — €19 / mês
+Atualizar `src/index.css` e `tailwind.config.ts`:
 
-**Multi-moeda:** cada preço criado nas 4 moedas (EUR, BRL, USD, MZN) com conversão aproximada:
-- Pro: €9 / R$49 / $9.99 / 599 MZN
-- Premium: €19 / R$99 / $19.99 / 1.199 MZN
+- **Fundo**: gradiente radial esmeralda profundo → quase preto (`#050f0a → #0a1f14 → #0d2a1c`) com blobs coloridos fixos no `body::before/::after` (verde-primary, gold, cyan-teal) desfocados a ~180px, animados lentamente (`float`, 20s).
+- **Novos tokens**:
+  - `--glass-bg`: `rgba(255,255,255,0.04)`
+  - `--glass-border`: `rgba(245,240,224,0.08)`
+  - `--glass-highlight`: gradiente linear no topo dos cards
+  - `--gradient-mesh`: conic esmeralda/gold/teal
+  - `--gradient-primary`: `linear-gradient(135deg, hsl(primary), hsl(primary-glow))`
+  - `--gradient-gold`: gold → cream sutil
+  - `--glow-primary`, `--glow-gold`: box-shadows coloridos difusos
+- **Tipografia**: manter Instrument Serif (display) + Work Sans (body); adicionar variante "display gigante" (clamp 3–8rem, tracking apertado) para hero Aave-style.
+- **Utilities**: classes `.glass-card`, `.glass-panel`, `.glow-primary`, `.mesh-bg`, `.blob`, `.text-gradient-gold`.
+- **Keyframes novos**: `blob-float` (translate + scale), `shimmer` (para bordas de cards), `pulse-glow`.
 
-A moeda apresentada no checkout segue a escolhida no onboarding (`organizze.currency` → localStorage).
+## Componentes partilhados
 
-**Fluxo técnico:**
-- `enable_stripe_payments` + `batch_create_product` (3 preços × 4 moedas)
-- Nova página `/dashboard/planos-assinatura` com 3 cards → botão "Assinar" chama edge function `create-checkout`
-- Edge function `stripe-webhook` regista status em nova tabela `subscriptions (user_id, plan, status, current_period_end, currency)`
-- Hook `useSubscription()` para gating de features Pro/Premium
+- **`src/components/Blobs.tsx` (novo)**: 3–4 blobs SVG/div posicionados absolutamente, animados, reutilizável em landing/dashboard/onboarding.
+- **`DashboardCard.tsx`**: converter para glass (bg translúcido, border sutil, backdrop-blur, highlight no topo, hover glow).
+- **`SelectableCard.tsx`**: glass + selected state com gradiente + glow verde.
+- **`InputField.tsx`**: input glass (bg 4% branco, border sutil, focus com glow verde).
+- **`SocialLoginButton.tsx`**: glass button.
+- **Botão `ui/button`**: adicionar variantes `glass` e `gradient` (primary→glow com sombra colorida).
 
-## 2. Tour obrigatório para novos utilizadores
+## Landing page (`src/pages/Index.tsx` + `LandingHeader.tsx`)
 
-Regra: qualquer novo signup (Email, Google, futuro Apple) marca `firstRun=1` → ao aterrar em `/dashboard`, o `TourProvider` inicia automaticamente.
+- **Header**: glass sticky com blur, borda inferior sutil, logo com glow suave.
+- **Hero Aave-style**: título display gigante em serif com palavras-chave em gradiente gold; subtítulo em Work Sans muted; CTAs — primário gradient com glow, secundário glass; mockup WhatsApp num cartão glass flutuante com blob verde por trás.
+- **Seções**: cada bloco com blobs de fundo próprios, cards de features em grid glass com ícone em círculo gradient, seção de planos com o card destacado usando border-gradient animado (shimmer) e glow forte.
+- **Footer**: glass panel escuro com links em muted-foreground.
 
-**Comportamento:**
-- Overlay com passo-a-passo por todas as tabs (Overview → Lançamentos → Orçamento → Planos → Grupos → WhatsApp)
-- Botão **"Saltar"** disponível em cada passo
-- Se saltar sem chegar ao fim: `tourCompleted` fica `false` → volta no próximo login
-- Só desaparece definitivamente ao clicar **"Concluir"** no último passo (`tourCompleted=true`)
+## Signup + Onboarding
 
-**Implementação:**
-- Detecção de "novo user" no `AuthProvider`: comparar `created_at` do user com `last_sign_in_at`; se iguais → set `firstRun=1`
-- Isto cobre Google/Email/qualquer provider, sem depender do formulário de signup
-- `TourProvider` já existe — adicionar lógica de re-arme por login enquanto `!tourCompleted`
+- **`Signup.tsx`**: fundo mesh + blobs, cartão central glass grande com backdrop-blur pesado, inputs glass, botão gradient, social buttons glass.
+- **`OnboardingWizardLayout.tsx`**: header glass em vez de sólido primary, barra de progresso com gradiente animado, footer glass com blur, ícone da etapa em círculo gradient com glow.
+- **Onboarding pages** (Nome / Idioma / Moeda / WhatsApp): usar `SelectableCard` glass; adicionar 1–2 blobs de fundo.
 
-## 3. Redesign visual — Editorial Verde Escuro
+## Dashboard
 
-**Design tokens (index.css):**
-```
---background: 155 45% 6%      /* #0a1f14 */
---foreground: 45 40% 92%      /* #f5f0e0 cream */
---primary:    162 82% 27%     /* #0d7a5f esmeralda */
---accent:     45 55% 54%      /* #c9a84c dourado */
---card:       155 40% 9%
---muted:      155 20% 15%
-```
-Tipografia: **Instrument Serif** (headings/hero) + **Work Sans** (body/UI). Substituir Fraunces/Inter no `index.css` e `tailwind.config.ts`.
-
-**Páginas atualizadas:**
-- **Landing (`Index.tsx`)** — hero com serif grande + kicker dourado, mockup em cartão escuro com borda dourada fina, secções com muito whitespace, divisores sutis em `--accent/20`
-- **Header** — transparente sobre hero, sticky escuro após scroll
-- **Auth** — cartão escuro sobre fundo esverdeado, foco no CTA dourado
-- **Onboarding wizard** — header verde escuro, progresso dourado, tipografia serif nos títulos
-- **Dashboard** — cards com `bg-card`, headings serif, KPI numbers grandes em Instrument Serif; donut e gráficos com paleta esmeralda→dourado
-- **Nova página de Assinatura** — 3 cards, o do meio (Pro) com destaque dourado + selo "Mais popular"
-
-**Micro-interações:** hover suave (`transition-all duration-300`), underline animado nos links do nav, cards com `hover:border-accent/40`.
+- **`DashboardLayout.tsx`**:
+  - Header: substituir `bg-primary` sólido por glass escuro com backdrop-blur + borda sutil; NavLinks ativos com pill gradient + glow em vez de bold branco.
+  - Banner promo: glass em vez de amber sólido, botão "Ativar" gradient gold.
+  - Status sub-header: glass panel.
+  - Main: adicionar `<Blobs />` fixo de fundo.
+  - Floating buttons: glass circular com glow no hover.
+- **`Dashboard.tsx`** e outras páginas dashboard: KPI cards e donut chart em glass; números grandes em serif com gradiente gold sutil; sparklines/áreas com fill gradient verde translúcido.
+- **`MonthSelector.tsx`**, `EmptyState.tsx`, `QuickActionButton.tsx`: variante glass.
 
 ## Detalhes técnicos
 
-**Ficheiros a criar:**
-- `src/pages/DashboardAssinatura.tsx`
-- `src/hooks/useSubscription.tsx`
-- `supabase/functions/create-checkout/index.ts`
-- `supabase/functions/stripe-webhook/index.ts`
-- Migration: tabela `subscriptions` com RLS + GRANT
+- Todos os `bg-card`, `bg-primary`, `border-border` das superfícies principais migram para as novas utilities glass (via classes ou tokens) — sem quebrar semântica shadcn.
+- Blur pesado (`backdrop-blur-2xl`) apenas em superfícies primárias; blur médio em cards para performance.
+- Animações respeitam `prefers-reduced-motion` (desativar blobs e shimmer).
+- Zero cores hardcoded — tudo via tokens HSL em `index.css`.
+- Sem alterações de lógica/backend: apenas CSS, tokens, e presentational components.
 
-**Ficheiros a editar:**
-- `src/index.css` + `tailwind.config.ts` (paleta + fontes)
-- `src/pages/Index.tsx` (redesign completo landing)
-- `src/pages/Auth.tsx`, `OnboardingNome.tsx`, `OnboardingIdioma.tsx`, `OnboardingMoeda.tsx`, `OnboardingWhatsApp.tsx`
-- `src/components/onboarding/OnboardingWizardLayout.tsx`
-- `src/components/LandingHeader.tsx`
-- `src/pages/Dashboard.tsx` + restantes páginas do dashboard (tokens semânticos, sem hardcode)
-- `src/hooks/useAuth.tsx` (deteção de novo user via `created_at===last_sign_in_at`)
-- `src/components/tour/TourProvider.tsx` (skip + re-arme)
-- `src/App.tsx` (rota `/dashboard/assinatura`)
-- `src/components/dashboard/DashboardLayout.tsx` (link Assinatura)
+## Ordem de execução
 
-**Ordem de execução:**
-1. Redesign de tokens + fontes (base visual)
-2. Atualizar landing, auth, onboarding e dashboard para novos tokens
-3. Lógica de tour obrigatório com skip
-4. Ativar Stripe + produtos + página de assinatura + webhook
+1. Tokens + utilities + keyframes (`index.css`, `tailwind.config.ts`).
+2. Componentes partilhados (`Blobs`, botões, inputs, cards).
+3. Landing + header.
+4. Signup + Onboarding wizard.
+5. Dashboard layout + páginas.
+6. Passagem final de polish (glows, spacing, tipografia hero).
