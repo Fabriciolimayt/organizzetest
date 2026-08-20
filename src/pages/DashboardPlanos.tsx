@@ -92,7 +92,7 @@ const DashboardPlanos = () => {
   }
 
   const plans = plansQuery.data ?? [];
-  const capabilities = capabilitiesForSubscription(subscription.data?.status);
+  const capabilities = capabilitiesForSubscription(subscription.data);
   const planLimitReached = !capabilities.unlimitedPlans && plans.length >= 1;
   const dialogPlan = editingPlan
     ? { id: editingPlan.id, name: editingPlan.name, expectedIncome: editingPlan.expected_income, periodStart: editingPlan.period_start, periodEnd: editingPlan.period_end, currency: editingPlan.currency }

@@ -33,7 +33,7 @@ export default function DashboardAssinatura() {
   const currency = financial.data?.currency ?? "EUR";
   const current = subscription.data;
   const lifetimeAccess = current?.provider === "complimentary" && current.status === "active" && !current.current_period_end;
-  const capabilities = capabilitiesForSubscription(current?.status);
+  const capabilities = capabilitiesForSubscription(current);
   const returnUrl = useMemo(() => `${window.location.origin}/dashboard/assinatura?session_id={CHECKOUT_SESSION_ID}`, []);
 
   if (subscription.isLoading || financial.isLoading) return <PageState loading message="A carregar a assinatura..." />;
