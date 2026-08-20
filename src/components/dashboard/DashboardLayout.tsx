@@ -20,12 +20,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFinancialContext } from "@/hooks/useFinancialContext";
 import { useSubscriptionV2 } from "@/hooks/useSubscriptionV2";
 import { useToast } from "@/hooks/use-toast";
+import { isSubscriptionCurrent, type SubscriptionLike } from "@/lib/finance/capabilities";
 import { supabase } from "@/integrations/supabase/client";
 
-const subscriptionLabel = (status?: string) => {
-  if (status === "trialing") return "Período experimental";
-  if (status === "active") return "Plano ativo";
-  return "Plano gratuito";
+const subscriptionLabel = (subscription?: SubscriptionLike | null) => {
+  if (!isSubscriptionCurrent(subscription)) return "Plano gratuito";
+  if (subscription?.status === "trialing") return "Período experimental";
+  return "Plano ativo";
 };
 
 type AccountMenuProps = {
@@ -113,7 +114,7 @@ const DashboardLayout = () => {
   const subscription = useSubscriptionV2();
   const { toast } = useToast();
   const currentSpace = financial.data?.spaces.find((space) => space.id === financial.data?.spaceId);
-  const planLabel = subscription.isLoading ? "A consultar plano" : subscriptionLabel(subscription.data?.status);
+  const planLabel = subscription.isLoading ? "A consultar plano" : subscriptionLabel(subscription.data);
   const restartTour = () => window.dispatchEvent(new CustomEvent("organizze:start-tour"));
 
   const handleSignOut = async () => {
