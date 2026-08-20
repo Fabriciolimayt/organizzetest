@@ -50,7 +50,9 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       localStorage.setItem(COMPLETED_KEY, "1");
       localStorage.removeItem(FIRSTRUN_KEY);
-    } catch {}
+    } catch {
+      // Storage can be unavailable in private or restricted browser contexts.
+    }
   }, []);
 
   const start = useCallback(() => {
@@ -69,7 +71,9 @@ export const TourProvider = ({ children }: { children: React.ReactNode }) => {
         const t = setTimeout(() => setOpen(true), 600);
         return () => clearTimeout(t);
       }
-    } catch {}
+    } catch {
+      // The tour simply stays inactive when browser storage is unavailable.
+    }
   }, [location.pathname]);
 
   // Listen to legacy event

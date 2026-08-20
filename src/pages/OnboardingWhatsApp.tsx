@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { MessageCircle, Receipt, MessageSquare, Calendar, SkipForward, ChevronDown } from "lucide-react";
 import OnboardingWizardLayout from "@/components/onboarding/OnboardingWizardLayout";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { supabaseV2 } from "@/integrations/supabase/v2";
 import {
   Popover,
   PopoverContent,
@@ -11,7 +14,6 @@ import {
 import {
   WA_COUNTRIES,
   countryForCurrency,
-  generateVerifyCode,
   onlyDigits,
   validatePhone,
   type WaCountry,
@@ -32,38 +34,65 @@ const OnboardingWhatsApp = () => {
   const [country, setCountry] = useState<WaCountry>(() => countryForCurrency(currency));
   const [phone, setPhone] = useState("");
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const valid = validatePhone(country, phone);
 
   const startVerification = async () => {
-    const code = generateVerifyCode();
-    const ddiDigits = country.ddi.replace(/\D/g, "");
-    const fullPhone = ddiDigits + onlyDigits(phone);
-    const data = {
-      code,
-      phone: fullPhone,
-      countryCode: country.code,
-      ddi: country.ddi,
-      status: "pending" as const,
-      startedAt: Date.now(),
-    };
-    localStorage.setItem("organizze.waVerification", JSON.stringify(data));
+    if (!valid || loading) return;
 
-    // Persist the pending link so the webhook can find it
+    setLoading(true);
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data: auth } = await supabase.auth.getUser();
-      if (auth?.user) {
-        // upsert by phone
-        await supabase.from("whatsapp_links").upsert(
-          { user_id: auth.user.id, phone: fullPhone, verify_code: code, verified_at: null },
-          { onConflict: "phone" }
-        );
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) throw new Error("Inicia sessão para ligar o WhatsApp.");
+
+      const { data: memberships, error: membershipError } = await supabaseV2
+        .from("space_members")
+        .select("space_id, role")
+        .eq("user_id", auth.user.id);
+      if (membershipError) throw membershipError;
+
+      const administrable = memberships?.find(
+        ({ role }) => role === "owner" || role === "admin",
+      );
+      const membership = administrable ?? memberships?.[0];
+      if (!membership) throw new Error("Não encontrámos um espaço financeiro para esta conta.");
+
+      const spaceId = membership.space_id;
+      const fullPhone = `${country.ddi}${onlyDigits(phone)}`;
+      const { data: links, error: linkError } = await supabaseV2
+        .rpc("create_whatsapp_link", { phone_e164: fullPhone, space_id: spaceId });
+      if (linkError) {
+        if (!administrable) {
+          throw new Error("Só um proprietário ou administrador pode ligar o WhatsApp neste espaço.");
+        }
+        throw linkError;
       }
-    } catch (e) {
-      console.error("save link failed", e);
+
+      const link = links?.[0];
+      if (!link) throw new Error("Não foi possível criar a ligação. Tenta novamente.");
+
+      localStorage.setItem("organizze.waVerification", JSON.stringify({
+        code: link.code,
+        phone: fullPhone,
+        instanceName: link.instance_name,
+        expiresAt: link.expires_at,
+        spaceId,
+        countryCode: country.code,
+        countryName: country.name,
+        ddi: country.ddi,
+        status: "pending" as const,
+      }));
+      navigate("/onboarding/whatsapp/verificar");
+    } catch (error) {
+      toast({
+        title: "Não foi possível iniciar a ligação",
+        description: error instanceof Error ? error.message : "Tenta novamente dentro de instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    navigate("/onboarding/whatsapp/verificar");
   };
 
 
@@ -82,8 +111,8 @@ const OnboardingWhatsApp = () => {
       }
       onBack={() => navigate("/onboarding/moeda")}
       onContinue={startVerification}
-      canContinue={valid}
-      continueLabel="Verificar com WhatsApp"
+      canContinue={valid && !loading}
+      continueLabel={loading ? "A preparar ligação..." : "Verificar com WhatsApp"}
       extraFooter={
         <div className="text-center space-y-1">
           <button
@@ -191,12 +220,12 @@ const OnboardingWhatsApp = () => {
         </div>
 
         <Button
-          disabled={!valid}
+          disabled={!valid || loading}
           onClick={startVerification}
           className="w-full gap-2"
           variant={valid ? "default" : "secondary"}
         >
-          <MessageCircle size={16} /> Verificar com WhatsApp
+          <MessageCircle size={16} /> {loading ? "A preparar ligação..." : "Verificar com WhatsApp"}
         </Button>
       </div>
     </OnboardingWizardLayout>

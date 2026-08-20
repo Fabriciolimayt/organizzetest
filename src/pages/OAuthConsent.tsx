@@ -4,9 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 type OAuthNamespace = {
-  getAuthorizationDetails: (id: string) => Promise<{ data: any; error: any }>;
-  approveAuthorization: (id: string) => Promise<{ data: any; error: any }>;
-  denyAuthorization: (id: string) => Promise<{ data: any; error: any }>;
+  getAuthorizationDetails: (id: string) => Promise<OAuthResponse>;
+  approveAuthorization: (id: string) => Promise<OAuthResponse>;
+  denyAuthorization: (id: string) => Promise<OAuthResponse>;
+};
+
+type OAuthDetails = {
+  redirect_url?: string;
+  redirect_to?: string;
+  client?: { name?: string };
+};
+
+type OAuthResponse = {
+  data: OAuthDetails | null;
+  error: { message: string } | null;
 };
 
 function oauth(): OAuthNamespace {
@@ -16,7 +27,7 @@ function oauth(): OAuthNamespace {
 const OAuthConsent = () => {
   const [params] = useSearchParams();
   const authorizationId = params.get("authorization_id") ?? "";
-  const [details, setDetails] = useState<any>(null);
+  const [details, setDetails] = useState<OAuthDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 

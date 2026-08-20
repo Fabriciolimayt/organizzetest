@@ -2,6 +2,7 @@ import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3.23.8';
+import { createGeminiChatRequest } from '../_shared/whatsapp-process.ts';
 
 const SYSTEM = `És um extrator de dados de faturas/recibos. Recebes a imagem de um recibo (em qualquer idioma) e devolves SOMENTE um objeto JSON válido, sem markdown nem comentários, com o esquema:
 {
@@ -44,14 +45,10 @@ Deno.serve(async (req) => {
     if (!parsed.success) return jsonResponse({ error: 'Invalid request' }, 400);
     const { imageBase64, currency } = parsed.data;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) return jsonResponse({ error: 'AI not configured' }, 500);
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) return jsonResponse({ error: 'AI not configured' }, 500);
 
-    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+    const res = await fetch(createGeminiChatRequest(geminiApiKey, {
         messages: [
           { role: 'system', content: SYSTEM },
           {
@@ -63,12 +60,11 @@ Deno.serve(async (req) => {
           },
         ],
         response_format: { type: 'json_object' },
-      }),
-    });
+    }));
 
     if (!res.ok) {
       const t = await res.text();
-      console.error('AI gateway error', res.status, t);
+      console.error('Gemini API error', res.status, t);
       return jsonResponse({ error: 'AI service temporarily unavailable' }, 502);
     }
     const data = await res.json();

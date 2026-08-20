@@ -1,144 +1,119 @@
-import { useState } from "react";
-import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Save } from "lucide-react";
+
+import BudgetEditor from "@/components/finance/BudgetEditor";
 import DashboardCard from "@/components/dashboard/DashboardCard";
+import PageHeader from "@/components/dashboard/PageHeader";
 import MonthSelector from "@/components/dashboard/MonthSelector";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Home, Utensils, Car, Heart, Gamepad2, GraduationCap, PiggyBank } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
+import { equalAllocations, useBudgetPlanV2, useSaveBudgetPlanV2, validateAllocations, type AllocationDraft } from "@/hooks/useBudgetsV2";
+import { useFinancialContext } from "@/hooks/useFinancialContext";
+import { useTransactionsV2 } from "@/hooks/useTransactionsV2";
+import { monthRange, shiftMonth } from "@/lib/finance/month";
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from "@/lib/finance/money";
 
-const categories = [
-  { name: "Moradia", icon: Home, group: "necessidades", spent: 0 },
-  { name: "Alimentação", icon: Utensils, group: "necessidades", spent: 0 },
-  { name: "Transporte", icon: Car, group: "necessidades", spent: 0 },
-  { name: "Saúde", icon: Heart, group: "necessidades", spent: 0 },
-  { name: "Lazer", icon: Gamepad2, group: "desejos", spent: 0 },
-  { name: "Educação", icon: GraduationCap, group: "desejos", spent: 0 },
-  { name: "Poupança", icon: PiggyBank, group: "poupanca", spent: 0 },
-];
+const titleCase = (value: string) => value.charAt(0).toLocaleUpperCase("pt-PT") + value.slice(1);
 
-const presets = [
-  { label: "50/30/20", values: [50, 30, 20] },
-  { label: "60/20/20", values: [60, 20, 20] },
-  { label: "40/30/30", values: [40, 30, 30] },
-];
+export default function DashboardOrcamento() {
+  const [anchor, setAnchor] = useState(new Date());
+  const financial = useFinancialContext();
+  const context = financial.data;
+  const range = useMemo(() => monthRange(anchor, context?.timezone ?? "UTC"), [anchor, context?.timezone]);
+  const budget = useBudgetPlanV2(range);
+  const transactions = useTransactionsV2(range, { search: "", type: "expense", categoryId: "all", status: "all" });
+  const saveBudget = useSaveBudgetPlanV2(range);
+  const categories = useMemo(() => (context?.categories ?? []).filter((category) => category.transaction_type === "expense"), [context?.categories]);
+  const [name, setName] = useState("Plano mensal");
+  const [incomeInput, setIncomeInput] = useState("0");
+  const [allocations, setAllocations] = useState<AllocationDraft[]>([]);
 
-const DashboardOrcamento = () => {
-  const [income, setIncome] = useState(1800);
-  const [split, setSplit] = useState([50, 30, 20]);
+  useEffect(() => {
+    if (!categories.length || budget.isLoading) return;
+    if (budget.data) {
+      setName(budget.data.name);
+      setIncomeInput(formatCurrencyInput(Number(budget.data.expected_income), context?.locale ?? "pt-PT"));
+      setAllocations(categories.map((category) => ({ categoryId: category.id, percentage: budget.data?.allocations.find((allocation) => allocation.category_id === category.id)?.percentage ?? 0 })));
+    } else {
+      setName("Plano mensal");
+      setIncomeInput("0");
+      setAllocations(equalAllocations(categories));
+    }
+  }, [budget.data, budget.isLoading, categories, context?.locale, range.key]);
 
-  const setSlider = (idx: number, val: number) => {
-    const next = [...split];
-    next[idx] = val;
-    setSplit(next);
+  const locale = context?.locale ?? "pt-PT";
+  const currency = context?.currency ?? "EUR";
+  const income = parseCurrencyInput(incomeInput, locale);
+  const validation = validateAllocations(allocations);
+  const spentByCategory = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const transaction of transactions.data ?? []) {
+      if (transaction.status === "void" || !transaction.category_id) continue;
+      totals.set(transaction.category_id, (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount));
+    }
+    return totals;
+  }, [transactions.data]);
+  const totalSpent = [...spentByCategory.values()].reduce((sum, value) => sum + value, 0);
+  const monthLabel = titleCase(new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: context?.timezone ?? "UTC" }).format(anchor));
+
+  const save = async () => {
+    try {
+      await saveBudget.mutateAsync({ id: budget.data?.id, name, expectedIncome: income, allocations });
+      toast({ title: "Orçamento guardado", description: `${monthLabel} está atualizado.` });
+    } catch (error) {
+      toast({ title: "Não foi possível guardar", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
   };
 
-  const total = split[0] + split[1] + split[2];
-  const necessidades = (income * split[0]) / 100;
-  const desejos = (income * split[1]) / 100;
-  const poupanca = (income * split[2]) / 100;
+  if (financial.isLoading || budget.isLoading || transactions.isLoading) return <State message="A carregar orçamento..." loading />;
+  if (financial.error || budget.error || transactions.error) return <State message="Não foi possível carregar o orçamento." action={<Button variant="outline" onClick={() => { void financial.refetch(); void budget.refetch(); void transactions.refetch(); }}>Tentar novamente</Button>} />;
 
   return (
-    <div className="space-y-6">
-      <MonthSelector />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <DashboardCard title="Renda mensal">
-          <div className="space-y-3 py-2">
-            <Input
-              type="number"
-              value={income}
-              onChange={(e) => setIncome(Number(e.target.value) || 0)}
-              className="text-2xl font-bold h-14"
-            />
-            <p className="text-xs text-muted-foreground">
-              Sua renda líquida mensal. Tudo é calculado a partir daqui.
-            </p>
-          </div>
-        </DashboardCard>
-
-        <DashboardCard title="Modelos de divisão" className="lg:col-span-2">
-          <div className="grid grid-cols-3 gap-3 py-2">
-            {presets.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => setSplit(p.values)}
-                className={`p-3 rounded-lg border text-sm font-medium transition-colors ${
-                  split.join("/") === p.values.join("/")
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+    <div className="space-y-5">
+      <PageHeader eyebrow="Planear" title="Orçamento" description="Define o rendimento previsto e distribui cada euro pelas categorias do mês." />
+      <MonthSelector month={monthLabel} onPrevious={() => setAnchor((current) => shiftMonth(current, -1, context?.timezone ?? "UTC"))} onNext={() => setAnchor((current) => shiftMonth(current, 1, context?.timezone ?? "UTC"))} />
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <DashboardCard title="Plano do mês">
+            <div className="space-y-4">
+              <div className="space-y-1.5"><Label htmlFor="budget-name">Nome</Label><Input id="budget-name" value={name} onChange={(event) => setName(event.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="budget-income">Rendimento previsto ({currency})</Label><Input id="budget-income" inputMode="decimal" value={incomeInput} onChange={(event) => setIncomeInput(event.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-2"><div className="rounded-md bg-muted p-3"><p className="text-xs text-muted-foreground">Gasto</p><p className="font-semibold tabular-nums">{formatCurrency(totalSpent, currency, locale)}</p></div><div className="rounded-md bg-muted p-3"><p className="text-xs text-muted-foreground">Disponível</p><p className="font-semibold tabular-nums">{formatCurrency((Number.isFinite(income) ? income : 0) - totalSpent, currency, locale)}</p></div></div>
+            </div>
+          </DashboardCard>
+          <DashboardCard title="Modelos">
+            <div className="grid gap-2"><Button variant="outline" onClick={() => setAllocations(equalAllocations(categories))}>Divisão equilibrada</Button><Button variant="outline" onClick={() => setAllocations(weightedPreset(categories))}>Base 50/30/20</Button></div>
+          </DashboardCard>
+        </div>
+        <DashboardCard title="Divisão por categoria">
+          <BudgetEditor categories={categories} allocations={allocations} income={Number.isFinite(income) ? income : 0} spentByCategory={spentByCategory} currency={currency} locale={locale} disabled={!context?.canWrite || saveBudget.isPending} onChange={setAllocations} />
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <p className={`text-sm ${validation.valid ? "text-muted-foreground" : "text-destructive"}`}>{validation.valid ? "A divisão soma 100%." : validation.message}</p>
+            <Button onClick={() => void save()} disabled={!context?.canWrite || !validation.valid || !Number.isFinite(income) || saveBudget.isPending}>{saveBudget.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar orçamento</Button>
           </div>
         </DashboardCard>
       </div>
-
-      <DashboardCard title="Divisão do orçamento">
-        <div className="space-y-6 py-2">
-          {[
-            { label: "Necessidades", value: split[0], idx: 0, amount: necessidades, color: "bg-primary" },
-            { label: "Desejos", value: split[1], idx: 1, amount: desejos, color: "bg-amber-500" },
-            { label: "Poupança", value: split[2], idx: 2, amount: poupanca, color: "bg-blue-500" },
-          ].map((row) => (
-            <div key={row.label} className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{row.label}</span>
-                <span className="text-muted-foreground">
-                  {row.value}% · R$ {row.amount.toFixed(2)}
-                </span>
-              </div>
-              <Slider
-                value={[row.value]}
-                onValueChange={(v) => setSlider(row.idx, v[0])}
-                max={100}
-                step={5}
-              />
-            </div>
-          ))}
-          {total !== 100 && (
-            <p className="text-xs text-destructive">
-              Total: {total}% — ajuste para somar 100%.
-            </p>
-          )}
-        </div>
-      </DashboardCard>
-
-      <DashboardCard title="Categorias (7)">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
-          {categories.map((c) => {
-            const Icon = c.icon;
-            const limit =
-              c.group === "necessidades"
-                ? necessidades / 4
-                : c.group === "desejos"
-                ? desejos / 2
-                : poupanca;
-            const pct = limit ? (c.spent / limit) * 100 : 0;
-            return (
-              <div key={c.name} className="border border-border rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon size={16} className="text-primary" />
-                    <span className="text-sm font-medium">{c.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    R$ {c.spent.toFixed(2)} / R$ {limit.toFixed(2)}
-                  </span>
-                </div>
-                <Progress value={pct} className="h-1.5" />
-              </div>
-            );
-          })}
-        </div>
-        <div className="pt-4">
-          <Button className="w-full sm:w-auto">Salvar orçamento</Button>
-        </div>
-      </DashboardCard>
     </div>
   );
-};
+}
 
-export default DashboardOrcamento;
+function weightedPreset(categories: Array<{ id: string }>): AllocationDraft[] {
+  if (categories.length < 3) return equalAllocations(categories);
+  const boundaries = [Math.ceil(categories.length / 2), categories.length - 1];
+  const groups = [categories.slice(0, boundaries[0]), categories.slice(boundaries[0], boundaries[1]), categories.slice(boundaries[1])];
+  const weights = [50, 30, 20];
+  return groups.flatMap((group, groupIndex) => {
+    let assigned = 0;
+    return group.map((category, index) => {
+      const percentage = index === group.length - 1 ? weights[groupIndex] - assigned : Math.floor((weights[groupIndex] / group.length) * 100) / 100;
+      assigned += percentage;
+      return { categoryId: category.id, percentage };
+    });
+  });
+}
+
+function State({ message, loading, action }: { message: string; loading?: boolean; action?: React.ReactNode }) {
+  return <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">{loading && <Loader2 size={20} className="animate-spin" />}<p>{message}</p>{action}</div>;
+}

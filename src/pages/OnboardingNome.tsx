@@ -17,15 +17,14 @@ const OnboardingNome = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-app-bg">
-      {/* Green header */}
-      <div className="w-full bg-primary py-4 px-6">
-        <Logo white />
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="w-full border-b border-border bg-card px-6 py-4">
+        <Logo />
       </div>
 
       {/* Card */}
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-3xl bg-card rounded-2xl shadow-lg overflow-hidden grid md:grid-cols-2">
+        <div className="surface-panel w-full max-w-3xl overflow-hidden grid md:grid-cols-2">
           {/* Left */}
           <div className="p-8 flex flex-col justify-center gap-6">
             <div>

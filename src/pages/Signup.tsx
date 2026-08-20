@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
-import Blobs from "@/components/Blobs";
 import InputField from "@/components/InputField";
 import SocialLoginButton from "@/components/SocialLoginButton";
 import { Button } from "@/components/ui/button";
@@ -26,16 +25,12 @@ const Signup = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="fixed inset-0 -z-10">
-        <Blobs variant="hero" />
-      </div>
-
-      <div className="w-full max-w-md glass-card p-8 flex flex-col items-center gap-6 relative">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="surface-panel w-full max-w-md p-8 flex flex-col items-center gap-6">
         <Logo />
         <div className="text-center">
-          <h1 className="font-serif text-3xl font-normal text-foreground tracking-tight">
-            Crie sua conta <span className="text-gradient-gold">como quiser</span>
+          <h1 className="font-guidance text-3xl font-normal text-foreground tracking-tight">
+            Cria a tua conta
           </h1>
           <p className="text-sm text-muted-foreground mt-2">Comece o seu plano em menos de um minuto.</p>
         </div>
@@ -50,9 +45,9 @@ const Signup = () => {
         </div>
 
         <div className="w-full flex items-center gap-4">
-          <div className="flex-1 h-px bg-[hsl(var(--glass-border))]" />
+          <div className="flex-1 h-px bg-border" />
           <span className="text-xs text-muted-foreground uppercase tracking-wider">ou</span>
-          <div className="flex-1 h-px bg-[hsl(var(--glass-border))]" />
+          <div className="flex-1 h-px bg-border" />
         </div>
 
         <form className="w-full flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (agreed) navigate("/onboarding/nome"); }}>
@@ -71,7 +66,7 @@ const Signup = () => {
             />
             <span className="text-sm text-muted-foreground">
               Li e concordo com os{" "}
-              <a href="#" className="text-primary-glow hover:underline">termos de uso</a>.
+              <a href="#" className="text-primary hover:underline">termos de uso</a>.
             </span>
           </label>
 

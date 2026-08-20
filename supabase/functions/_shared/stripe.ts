@@ -9,6 +9,11 @@ const getEnv = (key: string): string => {
 
 export type StripeEnv = "sandbox" | "live";
 
+export type StripeWebhookEvent = {
+  type: string;
+  data: { object: unknown };
+};
+
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
 export function getConnectionApiKey(env: StripeEnv): string {
@@ -38,7 +43,7 @@ export function createStripeClient(env: StripeEnv): Stripe {
   });
 }
 
-export async function verifyWebhook(req: Request, env: StripeEnv): Promise<{ type: string; data: { object: any } }> {
+export async function verifyWebhook(req: Request, env: StripeEnv): Promise<StripeWebhookEvent> {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
   const secret = env === "sandbox" ? getEnv("PAYMENTS_SANDBOX_WEBHOOK_SECRET") : getEnv("PAYMENTS_LIVE_WEBHOOK_SECRET");
@@ -65,5 +70,5 @@ export async function verifyWebhook(req: Request, env: StripeEnv): Promise<{ typ
   const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${body}`));
   const expected = new TextDecoder().decode(encode(new Uint8Array(signed)));
   if (!v1Signatures.includes(expected)) throw new Error("Invalid webhook signature");
-  return JSON.parse(body);
+  return JSON.parse(body) as StripeWebhookEvent;
 }

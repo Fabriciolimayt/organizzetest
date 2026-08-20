@@ -2,6 +2,7 @@ import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3.23.8';
+import { createGeminiChatRequest } from '../_shared/whatsapp-process.ts';
 
 const SYSTEM = `Extrai despesas a partir de mensagens de texto curtas (em PT, BR ou EN). Devolve SOMENTE JSON válido:
 { "amount": number, "currency": "EUR"|"BRL"|"USD"|"MZN"|null, "category": "Alimentação"|"Transporte"|"Lazer"|"Casa"|"Saúde"|"Outros", "description": string }
@@ -37,26 +38,21 @@ Deno.serve(async (req) => {
     if (!parsed.success) return jsonResponse({ error: 'Invalid request' }, 400);
     const { text, currency } = parsed.data;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) return jsonResponse({ error: 'AI not configured' }, 500);
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) return jsonResponse({ error: 'AI not configured' }, 500);
 
     const userPayload = JSON.stringify({ message: text, preferred_currency: currency ?? 'EUR' });
 
-    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+    const res = await fetch(createGeminiChatRequest(geminiApiKey, {
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: userPayload },
         ],
         response_format: { type: 'json_object' },
-      }),
-    });
+    }));
     if (!res.ok) {
       const t = await res.text();
-      console.error('AI gateway error', res.status, t);
+      console.error('Gemini API error', res.status, t);
       return jsonResponse({ error: 'AI service temporarily unavailable' }, 502);
     }
     const data = await res.json();

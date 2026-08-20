@@ -2,7 +2,7 @@
 
 SaaS de finanças pessoais com registo de gastos via WhatsApp (texto + OCR de faturas), dashboard editorial, orçamento 50/30/20, planos multi-moeda via Stripe e integração MCP para agentes de IA.
 
-**Stack:** React 18 · Vite 5 · TypeScript · Tailwind CSS · React Router · Supabase (Postgres + Auth + Edge Functions) · Stripe Embedded Checkout · Gemini 2.0 Flash (OCR) · Datafy / Meta WhatsApp Cloud API.
+**Stack:** React 18 · Vite 5 · TypeScript · Tailwind CSS · React Router · Supabase (Postgres + Auth + Edge Functions) · Stripe Embedded Checkout · Gemini 3.5 Flash-Lite · Evolution API 2.3.7 local (Baileys).
 
 ---
 
@@ -11,7 +11,7 @@ SaaS de finanças pessoais com registo de gastos via WhatsApp (texto + OCR de fa
 - **Node.js** ≥ 20 e **bun** (ou npm/pnpm)
 - Conta **Supabase** (ou Lovable Cloud)
 - Conta **Stripe** (modo sandbox para testes)
-- Conta **Datafy** (`app.datafyapi.com.br`) OU **Meta for Developers** (WhatsApp Cloud API)
+- Docker Engine com Docker Compose v2, para a integração WhatsApp local
 - **Google AI Studio** API key (Gemini) para OCR de faturas
 
 ---
@@ -60,21 +60,13 @@ Define no dashboard: **Supabase → Project Settings → Edge Functions → Secr
 | Secret | Onde obter |
 |---|---|
 | `GEMINI_API_KEY` | https://aistudio.google.com/app/apikey |
-| `LOVABLE_API_KEY` | Auto-provisionado pela Lovable (se usares Lovable AI Gateway em vez do Gemini directo) |
 
-### WhatsApp — opção A: Datafy (recomendado, actualmente em uso)
+### WhatsApp local — Evolution API
 | Secret | Descrição |
 |---|---|
-| `DATAFY_TOKEN` | Token da API em `app.datafyapi.com.br` → *Configurações → API* |
-| `DATAFY_WEBHOOK_SECRET` | Verify token que defines ao criar o webhook na Datafy |
+| `WHATSAPP_BRIDGE_SECRET` | Segredo HMAC partilhado entre bridge e Edge Function `whatsapp-ingest` |
 
-### WhatsApp — opção B: Meta Cloud API (oficial)
-| Secret | Descrição |
-|---|---|
-| `WHATSAPP_TOKEN` | Permanent access token do WhatsApp Business App |
-| `WHATSAPP_PHONE_ID` | Phone Number ID do painel Meta |
-| `WHATSAPP_APP_SECRET` | App Secret (usado para validar `x-hub-signature-256`) |
-| `WHATSAPP_VERIFY_TOKEN` | String arbitrária — colas a mesma no painel Meta |
+`SUPABASE_SERVICE_ROLE_KEY` e `EVOLUTION_API_KEY` pertencem apenas ao ambiente privado do bridge. Nunca entram no `.env` do frontend, em logs ou no Git.
 
 ### Stripe (gateway gerido pela Lovable Cloud)
 | Secret | Descrição |
@@ -97,11 +89,7 @@ npx supabase link --project-ref <project-ref>
 npx supabase db push
 ```
 
-Tabelas principais:
-- `expenses` — gastos registados (RLS por `user_id`)
-- `whatsapp_links` — códigos de verificação + número associado
-- `whatsapp_events` — logs de webhook para diagnóstico
-- `subscriptions` — estado Stripe por utilizador (função `has_active_subscription`)
+A migration V2 adiciona o schema `app_v2` sem remover as tabelas legadas. No dashboard do Supabase, em **Settings → API**, exponha explicitamente `app_v2` no Data API. As tabelas financeiras, membros, vínculos WhatsApp, jobs e relatórios mensais mantêm RLS por espaço.
 
 ---
 
@@ -116,6 +104,8 @@ npx supabase functions deploy monthly-summary
 npx supabase functions deploy create-checkout
 npx supabase functions deploy payments-webhook
 npx supabase functions deploy mcp
+npx supabase functions deploy whatsapp-ingest
+npx supabase functions deploy whatsapp-process
 ```
 
 Config de auth por função está em `supabase/config.toml` (webhooks e checkout usam `verify_jwt = false`).
@@ -124,23 +114,19 @@ Config de auth por função está em `supabase/config.toml` (webhooks e checkout
 
 ## 7. Configurar o WhatsApp
 
-### Datafy
-1. Login em https://app.datafyapi.com.br
-2. **Webhooks → Novo webhook**
-   - URL: `https://<project-ref>.supabase.co/functions/v1/whatsapp-webhook`
-   - Verify token: o mesmo valor de `DATAFY_WEBHOOK_SECRET`
-   - Eventos: `messages`
-3. Salva `DATAFY_TOKEN` e `DATAFY_WEBHOOK_SECRET` como secrets (passo 4).
+O WhatsApp usa uma Evolution API `2.3.7` local em modo Baileys. Suba a stack privada, sem portas expostas no host:
 
-### Meta Cloud API (alternativa)
-1. https://developers.facebook.com → App WhatsApp Business
-2. **Configuration → Webhook**
-   - Callback URL: `https://<project-ref>.supabase.co/functions/v1/whatsapp-webhook`
-   - Verify token: valor de `WHATSAPP_VERIFY_TOKEN`
-   - Subscribe: `messages`
-3. Adiciona números de teste em *API Setup*.
+```bash
+cd infra/whatsapp
+cp .env.example .env
+docker compose config
+docker compose up -d --build
+docker compose exec bridge npm run instance:create -- organizze-bot
+```
 
-Fluxo do utilizador: `/onboarding/whatsapp` gera código `moedas-verify-XXXX` → utilizador envia para `+351 938 930 953` → webhook associa o número ao `user_id`.
+Crie `organizze-bot` uma única vez e leia o QR apenas no terminal interativo. Cada vínculo gerado por `app_v2.create_whatsapp_link(phone_e164, space_id)` usa essa mesma instância; o isolamento de cada espaço acontece pela combinação `instance_name + phone_e164` no Supabase, não por instâncias por usuário. O bridge recebe eventos locais, assina-os e chama `whatsapp-ingest`; `whatsapp-process` processa jobs financeiros e o bridge envia respostas pela Evolution.
+
+Relatórios mensais opt-in são criados pela RPC `app_v2.enqueue_whatsapp_monthly_reports` e entregues por jobs `send_message`. Recibos são enviados diretamente ao Storage privado durante o ingest; `download_media` permanece deliberadamente não suportado. Para detalhes de segurança, QR e operação, consulte [infra/whatsapp/README.md](infra/whatsapp/README.md) e [docs/organizze-v2-deploy.md](docs/organizze-v2-deploy.md).
 
 ---
 

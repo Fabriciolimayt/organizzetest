@@ -1,0 +1,155 @@
+name: organizze-whatsapp
+
+services:
+  postgres:
+    image: postgres:15.12-alpine3.21
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EVOLUTION_DATABASE_NAME:?Set EVOLUTION_DATABASE_NAME in .env}
+      POSTGRES_USER: ${EVOLUTION_DATABASE_USER:?Set EVOLUTION_DATABASE_USER in .env}
+      POSTGRES_PASSWORD: ${EVOLUTION_DATABASE_PASSWORD:?Set EVOLUTION_DATABASE_PASSWORD in .env}
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - whatsapp_internal
+
+  redis:
+    image: redis:7.4.2-alpine3.21
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${EVOLUTION_REDIS_PASSWORD:?Set EVOLUTION_REDIS_PASSWORD in .env}
+    volumes:
+      - evolution_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    environment:
+      REDIS_PASSWORD: ${EVOLUTION_REDIS_PASSWORD:?Set EVOLUTION_REDIS_PASSWORD in .env}
+    networks:
+      - whatsapp_internal
+
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: "8080"
+      SERVER_URL: http://evolution:8080
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?Set EVOLUTION_API_KEY in .env}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_DATABASE_USER:?Set EVOLUTION_DATABASE_USER in .env}:${EVOLUTION_DATABASE_PASSWORD:?Set EVOLUTION_DATABASE_PASSWORD in .env}@postgres:5432/${EVOLUTION_DATABASE_NAME:?Set EVOLUTION_DATABASE_NAME in .env}
+      DATABASE_CONNECTION_CLIENT_NAME: organizze_evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${EVOLUTION_REDIS_PASSWORD:?Set EVOLUTION_REDIS_PASSWORD in .env}@redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: organizze-evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://bridge:3000/webhooks/evolution
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPDATE: "true"
+      WEBHOOK_EVENTS_CONNECTION_UPDATE: "true"
+      CONFIG_SESSION_PHONE_CLIENT: Organizze
+      CONFIG_SESSION_PHONE_NAME: Chrome
+      DEL_INSTANCE: "false"
+      LOG_LEVEL: WARN
+    volumes:
+      - evolution_instances:/evolution/instances
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8080').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - whatsapp_internal
+      - whatsapp_egress
+
+  bridge:
+    build:
+      context: ./bridge
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    depends_on:
+      evolution:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      EVOLUTION_BASE_URL: http://evolution:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?Set EVOLUTION_API_KEY in .env}
+      EVOLUTION_INSTANCE_PREFIX: ${EVOLUTION_INSTANCE_PREFIX:-organizze-}
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY in .env}
+      WHATSAPP_BRIDGE_SECRET: ${WHATSAPP_BRIDGE_SECRET:?Set WHATSAPP_BRIDGE_SECRET in .env}
+      BRIDGE_HOST: 0.0.0.0
+      BRIDGE_PORT: "3000"
+      BRIDGE_WORKER_ID: ${BRIDGE_WORKER_ID:-organizze-local-bridge}
+      MAX_WEBHOOK_BYTES: ${MAX_WEBHOOK_BYTES:-8912896}
+      MAX_MEDIA_BYTES: ${MAX_MEDIA_BYTES:-6291456}
+      JOB_POLL_INTERVAL_MS: ${JOB_POLL_INTERVAL_MS:-2000}
+      JOB_CLAIM_LIMIT: ${JOB_CLAIM_LIMIT:-10}
+      JOB_RETRY_BASE_MS: ${JOB_RETRY_BASE_MS:-2000}
+      JOB_RETRY_MAX_MS: ${JOB_RETRY_MAX_MS:-300000}
+      REPORT_ENQUEUE_INTERVAL_MS: ${REPORT_ENQUEUE_INTERVAL_MS:-3600000}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - whatsapp_internal
+      - whatsapp_egress
+
+networks:
+  whatsapp_internal:
+    internal: true
+  whatsapp_egress:
+
+volumes:
+  evolution_postgres_data:
+  evolution_redis_data:
+  evolution_instances:

@@ -25,6 +25,9 @@ const signupSchema = z.object({
 });
 const loginSchema = signupSchema;
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -59,9 +62,14 @@ const Auth = () => {
           options: { emailRedirectTo: `${window.location.origin}${from}` },
         });
         if (error) throw error;
-        try { localStorage.setItem("organizze.firstRun", "1"); localStorage.removeItem("organizze.tourCompleted"); } catch {}
+        try {
+          localStorage.setItem("organizze.firstRun", "1");
+          localStorage.removeItem("organizze.tourCompleted");
+        } catch {
+          // Onboarding continues when browser storage is unavailable.
+        }
         toast({ title: "Conta criada", description: "Bem-vindo!" });
-        navigate("/onboarding/nome", { replace: true });
+        navigate(safeNext ?? "/onboarding/nome", { replace: true });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: parsed.data.email,
@@ -69,8 +77,8 @@ const Auth = () => {
         });
         if (error) throw error;
       }
-    } catch (err: any) {
-      toast({ title: "Erro", description: err.message || "Algo falhou", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erro", description: getErrorMessage(err) || "Algo falhou", variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -81,16 +89,16 @@ const Auth = () => {
     try {
       const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}${from}` });
       if (res.error) throw res.error;
-    } catch (err: any) {
-      toast({ title: "Erro Google", description: err.message || "Algo falhou", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erro Google", description: getErrorMessage(err) || "Algo falhou", variant: "destructive" });
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-app-bg p-4">
-      <div className="w-full max-w-md bg-card rounded-2xl shadow-lg p-8 flex flex-col items-center gap-6">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="surface-panel w-full max-w-md p-8 flex flex-col items-center gap-6">
         <Logo />
         <h1 className="text-2xl font-bold text-foreground">
           {mode === "signup" ? "Cria a tua conta" : "Bem-vindo de volta"}

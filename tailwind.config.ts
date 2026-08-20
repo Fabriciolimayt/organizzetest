@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -8,12 +9,13 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: { "2xl": "1400px" },
+      screens: { "2xl": "1280px" },
     },
     fontFamily: {
-      sans: ['"Work Sans"', "system-ui", "sans-serif"],
-      serif: ['"Instrument Serif"', '"Fraunces"', "Georgia", "serif"],
-      display: ['"Instrument Serif"', "Georgia", "serif"],
+      sans: ['"DM Sans"', '"Helvetica Neue"', "system-ui", "sans-serif"],
+      serif: ['"Fraunces"', "Georgia", "serif"],
+      display: ['"Fraunces"', "Georgia", "serif"],
+      mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
     },
     extend: {
       colors: {
@@ -24,8 +26,8 @@ export default {
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
+          hover: "hsl(var(--primary-hover))",
           foreground: "hsl(var(--primary-foreground))",
-          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -34,6 +36,11 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+          wash: "hsl(var(--warning-wash))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -51,14 +58,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          foreground: "hsl(var(--gold-foreground))",
+        success: {
+          wash: "hsl(var(--success-wash))",
         },
-        cream: "hsl(var(--cream))",
-        emerald: {
-          deep: "hsl(var(--emerald-deep))",
+        data: {
+          blue: "hsl(var(--data-blue))",
+          violet: "hsl(var(--data-violet))",
         },
+        marker: "hsl(var(--marker))",
+        ink: "hsl(var(--ink-panel))",
         "app-bg": "hsl(var(--app-bg))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -72,9 +80,23 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-panel)",
+        md: "var(--radius-control)",
+        sm: "var(--radius-control)",
+      },
+      fontSize: {
+        display: ["2.5rem", { lineHeight: "1.05", fontWeight: "500" }],
+        "page-title": ["2rem", { lineHeight: "1.15", fontWeight: "600" }],
+        "panel-title": ["1.375rem", { lineHeight: "1.25", fontWeight: "600" }],
+        "compact-title": ["1rem", { lineHeight: "1.35", fontWeight: "650" }],
+        value: ["1.375rem", { lineHeight: "1.1", fontWeight: "650" }],
+        body: ["0.9375rem", { lineHeight: "1.55", fontWeight: "400" }],
+        "body-small": ["0.8125rem", { lineHeight: "1.45", fontWeight: "450" }],
+        label: ["0.75rem", { lineHeight: "1.3", fontWeight: "650" }],
+      },
+      fontWeight: {
+        450: "450",
+        650: "650",
       },
       keyframes: {
         "accordion-down": {
@@ -85,17 +107,12 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        floaty: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-12px)" },
-        },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        floaty: "floaty 6s ease-in-out infinite",
+        "accordion-down": "accordion-down 180ms ease-out",
+        "accordion-up": "accordion-up 180ms ease-out",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

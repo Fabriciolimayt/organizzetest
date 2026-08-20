@@ -5,26 +5,30 @@ import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { WA_BOT_NUMBER } from "@/lib/countries";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseV2 } from "@/integrations/supabase/v2";
 
 type Verification = {
   code: string;
   phone: string;
+  instanceName: string;
+  expiresAt: string;
+  spaceId: string;
   countryCode: string;
+  countryName: string;
   ddi: string;
   status: "pending" | "verified";
-  startedAt: number;
 };
 
 const formatBotNumber = (raw: string) => {
-  if (!raw || raw === "000000000000") return "(número Meta a configurar)";
-  return `+${raw}`;
+  const digits = raw.replace(/\D/g, "");
+  return digits ? `+${digits}` : "número dedicado do Organizze";
 };
 
 const OnboardingWhatsAppVerificar = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [verifying, setVerifying] = useState(true);
+  const [expired, setExpired] = useState(false);
 
   const verification = useMemo<Verification | null>(() => {
     try { return JSON.parse(localStorage.getItem("organizze.waVerification") || "null"); } catch { return null; }
@@ -34,29 +38,73 @@ const OnboardingWhatsAppVerificar = () => {
     if (!verification) navigate("/onboarding/whatsapp", { replace: true });
   }, [verification, navigate]);
 
-  // Poll for verification every 3s
   useEffect(() => {
     if (!verification) return;
     let stop = false;
+    let completed = false;
+
     const tick = async () => {
+      if (stop || completed) return;
+      if (Date.now() >= new Date(verification.expiresAt).getTime()) {
+        setExpired(true);
+        setVerifying(false);
+        return;
+      }
+
       try {
-        const { data } = await supabase
-          .from("whatsapp_links")
-          .select("verified_at")
-          .eq("verify_code", verification.code)
+        const { data: connection, error } = await supabaseV2
+          .from("whatsapp_connections")
+          .select("status, verified_at")
+          .eq("space_id", verification.spaceId)
+          .eq("phone_e164", verification.phone)
+          .eq("instance_name", verification.instanceName)
           .maybeSingle();
-        if (!stop && data?.verified_at) {
+        if (error) throw error;
+
+        if (!stop && connection?.status === "active" && connection.verified_at) {
+          completed = true;
           setVerifying(false);
+
+          const { error: preferencesError } = await supabaseV2.rpc("update_whatsapp_preferences",
+            {
+              space_id: verification.spaceId,
+              monthly_report_opt_in: true,
+              preferences: { day: 25, timezone: "Europe/Lisbon" },
+            },
+          );
+          if (preferencesError) {
+            toast({
+              title: "WhatsApp ligado",
+              description: "A preferência do resumo mensal não pôde ser guardada agora.",
+              variant: "destructive",
+            });
+          }
+
           localStorage.setItem("organizze.whatsapp", JSON.stringify({
-            phone: verification.phone, ddi: verification.ddi,
-            countryCode: verification.countryCode, verifiedAt: Date.now(),
+            phone: verification.phone,
+            ddi: verification.ddi,
+            countryCode: verification.countryCode,
+            countryName: verification.countryName,
+            spaceId: verification.spaceId,
+            instanceName: verification.instanceName,
+            status: "verified",
+            verifiedAt: connection.verified_at,
           }));
           localStorage.setItem("organizze.firstRun", "1");
           localStorage.removeItem("organizze.tourCompleted");
-          toast({ title: "✅ WhatsApp ligado!" });
+          localStorage.removeItem("organizze.waVerification");
+          toast({ title: "WhatsApp ligado!" });
           setTimeout(() => navigate("/dashboard"), 600);
         }
-      } catch {}
+      } catch (error) {
+        if (!stop) {
+          toast({
+            title: "Não foi possível verificar a ligação",
+            description: error instanceof Error ? error.message : "Vamos tentar novamente automaticamente.",
+            variant: "destructive",
+          });
+        }
+      }
     };
     tick();
     const id = setInterval(tick, 3000);
@@ -73,8 +121,8 @@ const OnboardingWhatsAppVerificar = () => {
   };
 
   const botDisplay = formatBotNumber(WA_BOT_NUMBER);
-  const waLinkVerify = `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(verification.code)}`;
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  const botNumber = WA_BOT_NUMBER.replace(/\D/g, "");
+  const waLinkVerify = `https://wa.me/${botNumber}?text=${encodeURIComponent(verification.code)}`;
 
   return (
     <div className="min-h-screen flex flex-col bg-app-bg">
@@ -95,40 +143,10 @@ const OnboardingWhatsAppVerificar = () => {
           Liga o WhatsApp num passo
         </h1>
         <p className="text-muted-foreground mb-6">
-          Usamos a <strong>WhatsApp Business Cloud API</strong> oficial da Meta.
-          Envia o código abaixo e ligamos automaticamente.
+          Envia o código ao número dedicado do Organizze. A ligação é feita pela
+          nossa integração Evolution local.
         </p>
 
-        {/* Setup info (one-time, for app owner) */}
-        <details className="rounded-xl border border-dashed border-border bg-card/50 p-3 mb-4 text-sm">
-          <summary className="cursor-pointer font-medium text-foreground">
-            ⚙️ Configuração inicial Datafy (uma vez só)
-          </summary>
-          <div className="mt-3 space-y-2 text-muted-foreground">
-            <p>
-              No painel <strong>Datafy → Webhooks</strong>, define:
-            </p>
-            <div className="space-y-1">
-              <div className="text-xs uppercase tracking-wider">Callback URL</div>
-              <div className="flex items-center justify-between gap-2 p-2 rounded bg-secondary">
-                <code className="font-mono text-xs break-all">{webhookUrl}</code>
-                <button onClick={() => copy(webhookUrl, "URL")}
-                  className="shrink-0 w-7 h-7 rounded bg-card border border-border flex items-center justify-center">
-                  <Copy size={12} />
-                </button>
-              </div>
-            </div>
-            <p className="text-xs">
-              <strong>Verify token:</strong> usa o valor de <code>WHATSAPP_VERIFY_TOKEN</code> configurado nas secrets do projeto.
-            </p>
-            <p className="text-xs">
-              Copia o <strong>webhook secret</strong> gerado pela Datafy e guarda como <code>DATAFY_WEBHOOK_SECRET</code>.
-              Subscreve o campo <code>messages</code>.
-            </p>
-          </div>
-        </details>
-
-        {/* Single step */}
         <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-4">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</span>
@@ -147,8 +165,8 @@ const OnboardingWhatsAppVerificar = () => {
             </button>
           </div>
 
-          <a href={waLinkVerify} target="_blank" rel="noopener noreferrer">
-            <Button className="w-full gap-2 h-12 text-base font-semibold">
+          <a href={expired ? undefined : waLinkVerify} target="_blank" rel="noopener noreferrer">
+            <Button disabled={expired} className="w-full gap-2 h-12 text-base font-semibold">
               <MessageCircle size={18} /> Abrir WhatsApp com o código
             </Button>
           </a>
@@ -158,8 +176,24 @@ const OnboardingWhatsAppVerificar = () => {
         </div>
 
         <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center py-2">
-          {verifying ? <><Loader2 size={14} className="animate-spin" /> À espera da tua mensagem...</> : <><Check size={14} className="text-primary" /> Verificado!</>}
+          {expired ? (
+            <span>Este código expirou.</span>
+          ) : verifying ? (
+            <><Loader2 size={14} className="animate-spin" /> À espera da tua mensagem...</>
+          ) : (
+            <><Check size={14} className="text-primary" /> Verificado!</>
+          )}
         </div>
+
+        {expired && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate("/onboarding/whatsapp", { replace: true })}
+          >
+            Recomeçar ligação
+          </Button>
+        )}
 
         <div className="text-center mt-4">
           <button onClick={() => navigate("/dashboard")} className="text-xs text-muted-foreground hover:underline">

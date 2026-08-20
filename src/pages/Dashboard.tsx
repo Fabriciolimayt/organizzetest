@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   ArrowRight,
@@ -15,33 +16,25 @@ import {
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import DashboardCard from "@/components/dashboard/DashboardCard";
+import MetricStrip from "@/components/dashboard/MetricStrip";
+import PageHeader from "@/components/dashboard/PageHeader";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
+import { useBudgetPlanV2 } from "@/hooks/useBudgetsV2";
+import { useFinancialContext } from "@/hooks/useFinancialContext";
+import { useDeleteTransactionV2, useTransactionsV2 } from "@/hooks/useTransactionsV2";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  categoryKeyFromV2Name,
+  mapActiveDashboardExpenses,
+  type DashboardCategoryKey,
+  type DashboardExpenseV2,
+} from "@/lib/dashboard-v2";
+import { monthRange } from "@/lib/finance/month";
 // Tour handled globally by TourProvider
 
 // ---- Types & helpers ----
-type CategoryKey =
-  | "necessidades"
-  | "fundo"
-  | "investimentos"
-  | "lazer"
-  | "subscricoes"
-  | "objetivo";
+type CategoryKey = DashboardCategoryKey;
 
 interface Category {
   key: CategoryKey;
@@ -51,14 +44,7 @@ interface Category {
   icon: React.ReactNode;
 }
 
-interface Expense {
-  id: string;
-  name: string;
-  amount: number;
-  category: CategoryKey;
-  fixed: boolean;
-  date: string;
-}
+type Expense = DashboardExpenseV2;
 
 const DEFAULT_CATEGORIES: Category[] = [
   { key: "necessidades", label: "Necessidades", pct: 40, color: "#6b7280", icon: <Home size={16} /> },
@@ -77,7 +63,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 const formatMoney = (n: number, sym: string) =>
-  `${sym}${n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${n < 0 ? "-" : ""}${sym}${Math.abs(n).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const useLocalState = <T,>(key: string, initial: T): [T, (v: T) => void] => {
   const [v, setV] = useState<T>(() => {
@@ -89,7 +75,11 @@ const useLocalState = <T,>(key: string, initial: T): [T, (v: T) => void] => {
     }
   });
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {
+      // Keep the in-memory dashboard state when storage is unavailable.
+    }
   }, [key, v]);
   return [v, setV];
 };
@@ -127,53 +117,39 @@ const Donut = ({ data, size = 160 }: { data: { value: number; color: string }[];
 
 
 const Dashboard = () => {
-  
-
-
-  const [currency] = useLocalState<string>("organizze.currency", "EUR");
+  const financialContext = useFinancialContext();
+  const context = financialContext.data;
+  const [localCurrency] = useLocalState<string>("organizze.currency", "EUR");
+  const currency = context?.currency ?? localCurrency;
   const sym = CURRENCY_SYMBOLS[currency] ?? "€";
 
   const [name] = useLocalState<string>("organizze.name", "");
-  const [salary, setSalary] = useLocalState<number>("organizze.salary", 0);
-  const [categories, setCategories] = useLocalState<Category[]>(
-    "organizze.categories",
-    DEFAULT_CATEGORIES,
+  const currentRange = useMemo(() => monthRange(new Date(), context?.timezone ?? "UTC"), [context?.timezone]);
+  const budgetQuery = useBudgetPlanV2(currentRange);
+  const transactionQuery = useTransactionsV2(currentRange, { search: "", type: "expense", categoryId: "all", status: "all" });
+  const deleteTransaction = useDeleteTransactionV2();
+  const categoryNames = useMemo(
+    () => new Map((context?.categories ?? []).map((category) => [category.id, category.name])),
+    [context?.categories],
   );
-  // Ensure icons (lost via JSON) are restored
-  const cats = useMemo(
-    () => categories.map((c) => ({ ...c, icon: DEFAULT_CATEGORIES.find((d) => d.key === c.key)?.icon })),
-    [categories],
+  const expenses = useMemo(
+    () => mapActiveDashboardExpenses(transactionQuery.data ?? [], categoryNames),
+    [categoryNames, transactionQuery.data],
   );
-
-  const [expenses, setExpenses] = useLocalState<Expense[]>("organizze.expenses", []);
+  const cats = useMemo(() => {
+    const percentages = new Map<CategoryKey, number>();
+    for (const allocation of budgetQuery.data?.allocations ?? []) {
+      const key = categoryKeyFromV2Name(categoryNames.get(allocation.category_id));
+      percentages.set(key, (percentages.get(key) ?? 0) + Number(allocation.percentage));
+    }
+    return DEFAULT_CATEGORIES.map((category) => ({ ...category, pct: percentages.get(category.key) ?? 0 }));
+  }, [budgetQuery.data?.allocations, categoryNames]);
+  const salary = Number(budgetQuery.data?.expected_income ?? 0);
+  const allocatedPercentage = cats.reduce((total, category) => total + category.pct, 0);
   const [activeCat, setActiveCat] = useState<CategoryKey>("subscricoes");
-
-  // Dialog state
-  const [salaryOpen, setSalaryOpen] = useState(false);
-  const [salaryDraft, setSalaryDraft] = useState("");
-  const [expOpen, setExpOpen] = useState(false);
-  const [expDraft, setExpDraft] = useState({ name: "", amount: "", category: "subscricoes" as CategoryKey, fixed: true });
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
   // Tour is now handled globally by TourProvider — local triggers removed.
-
-
-  // Sync expenses when WhatsApp bot adds new ones
-  useEffect(() => {
-    const onUpdate = (e: Event) => {
-      try {
-        const fresh = JSON.parse(localStorage.getItem("organizze.expenses") || "[]");
-        setExpenses(fresh);
-        const detail = (e as CustomEvent).detail;
-        if (detail?.source === "whatsapp") {
-          import("@/hooks/use-toast").then(({ toast }) =>
-            toast({ title: "✅ Despesa registada via WhatsApp", description: `${detail.added?.length ?? 0} novo(s) item(s)` })
-          );
-        }
-      } catch {}
-    };
-    window.addEventListener("organizze:expenses-updated", onUpdate);
-    return () => window.removeEventListener("organizze:expenses-updated", onUpdate);
-  }, [setExpenses]);
 
   // Derived totals
   const spentByCat = useMemo(() => {
@@ -190,26 +166,17 @@ const Dashboard = () => {
   const activeCategory = cats.find((c) => c.key === activeCat)!;
   const activeOrcamento = (salary * activeCategory.pct) / 100;
   const activeGasto = spentByCat[activeCat] ?? 0;
-  const filteredExpenses = expenses.filter((e) => e.category === activeCat && e.fixed);
+  const filteredExpenses = expenses.filter((e) => e.category === activeCat);
 
-  const saveSalary = () => {
-    const v = Number(salaryDraft.replace(",", "."));
-    if (!Number.isNaN(v) && v >= 0) setSalary(v);
-    setSalaryOpen(false);
+  const removeExpense = async (id: string) => {
+    try {
+      await deleteTransaction.mutateAsync(id);
+      setExpenseToDelete(null);
+      toast({ title: "Despesa eliminada" });
+    } catch (error) {
+      toast({ title: "Não foi possível eliminar", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
   };
-
-  const addExpense = () => {
-    const amt = Number(expDraft.amount.replace(",", "."));
-    if (!expDraft.name || Number.isNaN(amt)) return;
-    setExpenses([
-      ...expenses,
-      { id: crypto.randomUUID(), name: expDraft.name, amount: amt, category: expDraft.category, fixed: expDraft.fixed, date: new Date().toISOString() },
-    ]);
-    setExpDraft({ name: "", amount: "", category: activeCat, fixed: true });
-    setExpOpen(false);
-  };
-
-  const removeExpense = (id: string) => setExpenses(expenses.filter((e) => e.id !== id));
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -218,85 +185,66 @@ const Dashboard = () => {
     return "Boa noite";
   })();
 
+  if (financialContext.isLoading || transactionQuery.isLoading || budgetQuery.isLoading) {
+    return <DashboardDataState message="A carregar os teus dados financeiros..." />;
+  }
+  if (financialContext.error || transactionQuery.error || budgetQuery.error) {
+    return <DashboardDataState message="Não foi possível carregar os dados financeiros." action={<Button variant="outline" onClick={() => { void financialContext.refetch(); void transactionQuery.refetch(); void budgetQuery.refetch(); }}>Tentar novamente</Button>} />;
+  }
+
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-6xl space-y-7">
       {/* Global tour overlay is rendered by TourProvider */}
 
       {/* Greeting */}
-      <div className="px-1">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{greeting}</p>
-        <h1 className="font-serif text-3xl font-semibold text-foreground tracking-tight">
-          {name || "Olá"}, vamos cuidar do teu dinheiro.
-        </h1>
-      </div>
-
-      {/* Quick action row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 bg-card border border-border rounded-full px-1 py-1 shadow-sm">
-          <button className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <span className="text-xs font-bold">{(name || "U").slice(0, 1).toUpperCase()}</span>
-          </button>
-          <button className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
-            <Plus size={16} />
-          </button>
-        </div>
-        <Button
-          data-tour="salario"
-          onClick={() => { setSalaryDraft(salary ? String(salary) : ""); setSalaryOpen(true); }}
-          className="ml-auto rounded-full shadow-sm gap-2"
-        >
-          <Sparkles size={16} />
-          {salary > 0 ? "Editar salário" : "O meu salário"}
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow={greeting}
+        title={`${name || "Olá"}, vamos cuidar do teu dinheiro.`}
+        description="Uma leitura simples do que entrou, saiu e ainda está disponível este mês."
+        actions={<Button asChild><Link to="/dashboard/lancamentos"><Plus size={16} /> Novo lançamento</Link></Button>}
+      />
 
       {/* KPI grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          label="Rendimento Mensal"
-          value={formatMoney(salary, sym)}
-          hint={
-            salary === 0 ? (
-              <button onClick={() => setSalaryOpen(true)} className="text-[11px] font-medium text-amber-600 hover:underline flex items-center gap-1">
-                Configura primeiro o teu rendimento <ArrowRight size={12} />
-              </button>
-            ) : (
-              <span className="text-[11px] text-muted-foreground">Base do orçamento</span>
-            )
-          }
-        />
-        <KpiCard
-          label="Total de Despesas"
-          value={formatMoney(totalDespesas, sym)}
-          valueClassName="text-destructive"
-          hint={<span className="text-[11px] text-muted-foreground">{expenses.length} despesa{expenses.length === 1 ? "" : "s"} registada{expenses.length === 1 ? "" : "s"}</span>}
-        />
-        <KpiCard
-          label="Subscrições"
-          value={formatMoney(totalSubscricoes, sym)}
-          hint={<span className="text-[11px] text-muted-foreground">Orçamento: {formatMoney(orcamentoSubs, sym)}</span>}
-        />
-        <KpiCard
-          label="Saldo Disponível"
-          value={formatMoney(saldo, sym)}
-          valueClassName={saldo < 0 ? "text-destructive" : "text-foreground"}
-          hint={<span className="text-[11px] text-muted-foreground">Após todas as despesas</span>}
-        />
-      </div>
+      <MetricStrip items={[
+        { label: "Saldo disponível", value: formatMoney(saldo, sym), detail: "Depois de todas as despesas deste mês", variant: saldo < 0 ? "negative" : "default" },
+        { label: "Despesas", value: formatMoney(totalDespesas, sym), detail: `${expenses.length} registada${expenses.length === 1 ? "" : "s"}`, variant: "negative" },
+        { label: "Rendimento", value: formatMoney(salary, sym), detail: salary === 0 ? <Link to="/dashboard/orcamento" className="text-primary hover:underline">Configurar rendimento</Link> : "Base do orçamento", variant: "positive" },
+        { label: "Subscrições", value: formatMoney(totalSubscricoes, sym), detail: `Orçamento: ${formatMoney(orcamentoSubs, sym)}`, variant: "accent" },
+      ]} featured />
+
+      <section className="grid border border-foreground bg-card lg:grid-cols-[minmax(0,1fr)_320px]" aria-label="Decisão financeira do mês">
+        <div className="p-5 sm:p-7">
+          <p className="font-mono text-[10px] font-semibold uppercase text-data-blue">Leitura do mês / 01</p>
+          <h2 className="editorial-display mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">
+            {salary === 0 ? "O teu plano começa por uma referência." : saldo >= 0 ? "Há margem. Agora decide onde ela faz diferença." : "O mês pede uma decisão antes da próxima despesa."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+            {salary === 0 ? "Define o rendimento mensal para transformar lançamentos dispersos numa leitura útil." : `${Math.max(0, allocatedPercentage).toLocaleString(context?.locale ?? "pt-PT", { maximumFractionDigits: 1 })}% do rendimento já está distribuído pelo teu orçamento.`}
+          </p>
+        </div>
+        <div className="ink-panel m-0 rounded-none border-0 p-5 sm:p-7">
+          <p className="font-mono text-[10px] font-semibold uppercase text-marker">Próxima decisão</p>
+          <p className="editorial-display mt-7 text-2xl font-semibold leading-tight">
+            {salary === 0 ? "Dar um ponto de partida ao mês." : activeGasto > activeOrcamento ? `Rever ${activeCategory.label.toLowerCase()}.` : `Acompanhar ${activeCategory.label.toLowerCase()}.`}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-white/55">{salary === 0 ? "Leva menos de um minuto." : `${formatMoney(Math.abs(activeOrcamento - activeGasto), sym)} ${activeGasto > activeOrcamento ? "acima" : "ainda disponíveis"}.`}</p>
+          <Button asChild className="mt-8 w-full border-marker !bg-marker !text-foreground shadow-none hover:!bg-marker/90" data-tour="salario">
+            <Link to="/dashboard/orcamento">{salary > 0 ? "Abrir orçamento" : "Criar orçamento"}<ArrowRight size={16} /></Link>
+          </Button>
+        </div>
+      </section>
 
       {/* Plans pill row */}
-      <div data-tour="planos" className="flex items-center justify-between bg-card border border-border rounded-full px-2 py-1.5 shadow-sm">
-        <button className="flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold rounded-full px-3 py-1.5">
-          <Layers size={14} /> Default
+      <div data-tour="planos" className="flex items-center justify-between border-y border-border px-1 py-3">
+        <button className="flex min-h-11 items-center gap-2 px-3 text-sm font-semibold text-primary">
+          <Layers size={14} /> {budgetQuery.data?.name ?? "Sem plano"}
         </button>
-        <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 border border-dashed border-border rounded-full">
-          <Plus size={14} /> Novo
-        </button>
+        <Link to="/dashboard/orcamento" className="focus-ring flex min-h-11 items-center gap-1.5 px-3 text-sm text-primary hover:underline"><Plus size={14} /> Gerir</Link>
       </div>
 
       {/* Salary CTA banner */}
       {salary === 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200/70 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+        <div className="surface-panel flex items-center gap-3 border-warning bg-warning-wash p-4">
           <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
             <ArrowRight size={18} />
           </div>
@@ -304,22 +252,19 @@ const Dashboard = () => {
             <p className="font-serif font-semibold text-foreground">Começa por definir o teu salário</p>
             <p className="text-xs text-muted-foreground">Sem isso, não conseguimos calcular o teu orçamento.</p>
           </div>
-          <Button onClick={() => setSalaryOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-lg gap-2 shrink-0">
-            <Target size={16} /> Definir agora
-          </Button>
+          <Button asChild variant="gold" className="shrink-0 gap-2"><Link to="/dashboard/orcamento"><Target size={16} /> Definir agora</Link></Button>
         </div>
       )}
 
       {/* Budget card */}
-      <div data-tour="orcamento" className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <DashboardCard className="space-y-4" noPadding>
+        <div data-tour="orcamento" className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-serif text-xl font-semibold">O teu orçamento mensal</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Selecciona uma categoria para ver os gastos →</p>
           </div>
-          <Button variant="default" size="sm" className="rounded-full gap-1.5 shrink-0">
-            <BarChart3 size={14} /> Dividir
-          </Button>
+          <Button asChild variant="default" size="sm" className="rounded-full gap-1.5 shrink-0"><Link to="/dashboard/orcamento"><BarChart3 size={14} /> Dividir</Link></Button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -327,7 +272,7 @@ const Dashboard = () => {
             <Donut data={cats.map((c) => ({ value: c.pct, color: c.color }))} size={140} />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[10px] text-muted-foreground">do salário</span>
-              <span className="font-serif text-xl font-semibold">100%</span>
+              <span className="font-serif text-xl font-semibold">{allocatedPercentage.toLocaleString(context?.locale ?? "pt-PT", { maximumFractionDigits: 1 })}%</span>
             </div>
           </div>
           <ul className="flex-1 space-y-1.5 text-sm">
@@ -373,28 +318,29 @@ const Dashboard = () => {
         <p className="text-center text-xs text-primary font-medium pt-1">
           Toca numa categoria para ver as suas despesas
         </p>
-      </div>
+        </div>
+      </DashboardCard>
 
       {/* Fixed expenses card */}
-      <div data-tour="despesas" className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <div data-tour="despesas" className="surface-panel space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="font-serif text-xl font-semibold leading-tight">Despesas fixas mensais</h2>
+            <h2 className="font-serif text-xl font-semibold leading-tight">Despesas do mês</h2>
             <span className="bg-orange-100 text-orange-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
               {activeCategory.label}
             </span>
           </div>
           <Button
-            onClick={() => { setExpDraft({ ...expDraft, category: activeCat }); setExpOpen(true); }}
+            asChild
             size="sm"
             className="rounded-lg gap-1.5 shrink-0"
           >
-            <Plus size={14} /> Adicionar Despesa
+            <Link to="/dashboard/lancamentos"><Plus size={14} /> Adicionar despesa</Link>
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           ← Clica numa categoria à esquerda <br />
-          <span className="text-primary">●</span> A mostrar apenas despesas mensais fixas
+          <span className="text-primary">●</span> A mostrar as despesas da categoria selecionada
         </p>
 
         <div className="flex flex-wrap gap-2">
@@ -423,7 +369,7 @@ const Dashboard = () => {
           </button>
         </div>
 
-        <div className="bg-app-bg rounded-xl p-4">
+        <div className="surface-quiet p-4">
           <div className="flex items-baseline justify-between mb-1">
             <div>
               <p className="text-xs text-muted-foreground">{activeCategory.label}</p>
@@ -449,14 +395,9 @@ const Dashboard = () => {
         {filteredExpenses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
             <Layers size={36} className="text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">Sem despesas fixas em {activeCategory.label}</p>
-            <p className="text-xs text-muted-foreground">Adiciona uma despesa recorrente (mensal)</p>
-            <button
-              onClick={() => { setExpDraft({ ...expDraft, category: activeCat, fixed: true }); setExpOpen(true); }}
-              className="text-primary text-sm font-medium hover:underline flex items-center gap-1 mt-1"
-            >
-              <Plus size={14} /> Adicionar despesa fixa
-            </button>
+            <p className="text-sm text-muted-foreground">Sem despesas em {activeCategory.label}</p>
+            <p className="text-xs text-muted-foreground">Regista uma despesa para este mês.</p>
+            <Link to="/dashboard/lancamentos" className="text-primary text-sm font-medium hover:underline flex items-center gap-1 mt-1"><Plus size={14} /> Adicionar despesa</Link>
           </div>
         ) : (
           <ul className="divide-y divide-border">
@@ -467,7 +408,7 @@ const Dashboard = () => {
                 </span>
                 <span className="flex-1 text-sm font-medium truncate">{e.name}</span>
                 <span className="text-sm font-semibold tabular-nums">{formatMoney(e.amount, sym)}</span>
-                <button onClick={() => removeExpense(e.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                <button type="button" aria-label={`Eliminar ${e.name}`} onClick={() => setExpenseToDelete(e)} className="text-muted-foreground hover:text-destructive transition-colors">
                   <Trash2 size={14} />
                 </button>
               </li>
@@ -476,106 +417,18 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Salary Dialog */}
-      <Dialog open={salaryOpen} onOpenChange={setSalaryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-serif">Define o teu rendimento mensal</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="salary">Valor líquido por mês</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{sym}</span>
-              <Input
-                id="salary"
-                inputMode="decimal"
-                value={salaryDraft}
-                onChange={(e) => setSalaryDraft(e.target.value)}
-                placeholder="0,00"
-                className="pl-9 text-lg font-semibold"
-                autoFocus
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Usaremos este valor para calcular o orçamento de cada categoria.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setSalaryOpen(false)}>Cancelar</Button>
-            <Button onClick={saveSalary}>Guardar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog open={Boolean(expenseToDelete)} onOpenChange={(open) => { if (!open && !deleteTransaction.isPending) setExpenseToDelete(null); }}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminar despesa?</AlertDialogTitle><AlertDialogDescription>A despesa deixa de aparecer nos totais e relatórios, mas permanece no histórico técnico.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleteTransaction.isPending}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteTransaction.isPending} onClick={(event) => { event.preventDefault(); if (expenseToDelete) void removeExpense(expenseToDelete.id); }}>Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
 
-      {/* Expense Dialog */}
-      <Dialog open={expOpen} onOpenChange={setExpOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-serif">Nova despesa</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-name">Descrição</Label>
-              <Input id="exp-name" value={expDraft.name} onChange={(e) => setExpDraft({ ...expDraft, name: e.target.value })} placeholder="Ex.: Netflix" autoFocus />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-amount">Valor</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{sym}</span>
-                <Input
-                  id="exp-amount"
-                  inputMode="decimal"
-                  value={expDraft.amount}
-                  onChange={(e) => setExpDraft({ ...expDraft, amount: e.target.value })}
-                  placeholder="0,00"
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Categoria</Label>
-              <Select value={expDraft.category} onValueChange={(v) => setExpDraft({ ...expDraft, category: v as CategoryKey })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {cats.map((c) => (
-                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={expDraft.fixed}
-                onChange={(e) => setExpDraft({ ...expDraft, fixed: e.target.checked })}
-                className="rounded border-border"
-              />
-              Despesa fixa mensal (recorrente)
-            </label>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setExpOpen(false)}>Cancelar</Button>
-            <Button onClick={addExpense}>Adicionar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
-const KpiCard = ({
-  label,
-  value,
-  valueClassName = "",
-  hint,
-}: {
-  label: string;
-  value: string;
-  valueClassName?: string;
-  hint?: React.ReactNode;
-}) => (
-  <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-    <p className="text-xs text-muted-foreground font-medium">{label}</p>
-    <p className={`font-serif text-2xl font-semibold mt-0.5 tabular-nums ${valueClassName}`}>{value}</p>
-    <div className="mt-1">{hint}</div>
+const DashboardDataState = ({ message, action }: { message: string; action?: React.ReactNode }) => (
+  <div className="mx-auto flex min-h-[360px] max-w-3xl flex-col items-center justify-center gap-3 text-center">
+    <p className="text-sm text-muted-foreground">{message}</p>
+    {action}
   </div>
 );
 

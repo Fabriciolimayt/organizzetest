@@ -14,8 +14,8 @@ function markFirstRunIfNew(user: User | null) {
   if (!user) return;
   try {
     const created = user.created_at ? new Date(user.created_at).getTime() : 0;
-    const lastSignIn = (user as any).last_sign_in_at
-      ? new Date((user as any).last_sign_in_at).getTime()
+    const lastSignIn = user.last_sign_in_at
+      ? new Date(user.last_sign_in_at).getTime()
       : created;
     const isNew = created && Math.abs(lastSignIn - created) < 60_000;
     const prevUser = localStorage.getItem(LAST_USER_KEY);
@@ -28,7 +28,9 @@ function markFirstRunIfNew(user: User | null) {
       }
     }
     localStorage.setItem(LAST_USER_KEY, user.id);
-  } catch {}
+  } catch {
+    // Storage is optional; authentication must continue when it is unavailable.
+  }
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

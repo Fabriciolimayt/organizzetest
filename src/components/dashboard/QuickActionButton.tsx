@@ -9,7 +9,8 @@ interface QuickActionButtonProps {
 const QuickActionButton = ({ icon, label, onClick }: QuickActionButtonProps) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center gap-2 group"
+    type="button"
+    className="focus-ring group flex min-h-20 min-w-20 flex-col items-center gap-2 rounded-md px-2 py-1"
   >
     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
       {icon}
