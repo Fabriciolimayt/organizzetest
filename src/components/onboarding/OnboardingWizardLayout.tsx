@@ -2,7 +2,6 @@ import { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
-import Blobs from "@/components/Blobs";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -38,24 +37,16 @@ const OnboardingWizardLayout = ({
   const handleBack = onBack ?? (() => navigate(-1));
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      <div className="fixed inset-0 -z-10">
-        <Blobs />
-      </div>
-
-      {/* Glass header */}
-      <header className="glass-panel py-4 px-6 border-b border-[hsl(var(--glass-border))]">
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="border-b border-border bg-card px-6 py-4">
         <Logo />
       </header>
 
-      {/* Progress bar w/ gradient */}
-      <div className="h-1 w-full bg-[hsl(var(--glass-bg))]">
+      <div className="h-1 w-full bg-muted">
         <div
-          className="h-full transition-all"
+          className="h-full bg-primary transition-all"
           style={{
             width: `${progress}%`,
-            background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-glow)), hsl(var(--gold)))",
-            boxShadow: "0 0 12px hsl(var(--primary-glow) / 0.6)",
           }}
         />
       </div>
@@ -73,10 +64,10 @@ const OnboardingWizardLayout = ({
               key={i}
               className={`h-1.5 rounded-full transition-all ${
                 i + 1 === step
-                  ? "w-6 bg-gradient-to-r from-primary to-primary-glow"
+                  ? "w-6 bg-primary"
                   : i + 1 < step
                   ? "w-1.5 bg-primary/80"
-                  : "w-1.5 bg-[hsl(var(--glass-border))]"
+                  : "w-1.5 bg-border"
               }`}
             />
           ))}
@@ -88,8 +79,7 @@ const OnboardingWizardLayout = ({
 
       <main className="flex-1 px-6 pb-32 max-w-2xl w-full mx-auto">
         <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center text-primary-foreground mb-5 glow-primary"
-          style={{ background: "var(--gradient-primary)" }}
+          className="surface-quiet flex size-14 items-center justify-center rounded-md text-primary mb-5"
         >
           {icon}
         </div>
@@ -102,13 +92,12 @@ const OnboardingWizardLayout = ({
         <div className="mt-6">{children}</div>
       </main>
 
-      {/* Sticky glass footer */}
-      <div className="fixed bottom-0 inset-x-0 glass-panel border-t border-[hsl(var(--glass-border))] px-6 py-4">
+      <div className="fixed bottom-0 inset-x-0 border-t border-border bg-card px-6 py-4">
         <div className="max-w-2xl mx-auto space-y-3">
           <div className="flex items-center gap-3">
             <button
               onClick={handleBack}
-              className="btn-glass w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+              className="focus-ring flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
               aria-label="Voltar"
             >
               <ChevronLeft size={18} />

@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Camera, MessageCircle, Send, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/dashboard/PageHeader";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { addExpenses, fileToCompressedBase64, type ExpenseEntry } from "@/lib/whatsapp";
+import { supabaseV2 } from "@/integrations/supabase/v2";
+import { fileToCompressedBase64 } from "@/lib/whatsapp";
 import { WA_BOT_NUMBER } from "@/lib/countries";
 import { toast } from "@/hooks/use-toast";
+import { useFinancialContext } from "@/hooks/useFinancialContext";
+import { useSubscriptionV2 } from "@/hooks/useSubscriptionV2";
+import { capabilitiesForSubscription } from "@/lib/finance/capabilities";
 
 type Bubble = {
   id: string;
@@ -21,13 +26,38 @@ type Bubble = {
 };
 
 const STORAGE = "organizze.waMessages";
-const CATEGORY_TO_KEY: Record<string, string> = {
-  "Alimentação": "necessidades",
-  "Transporte": "necessidades",
-  "Casa": "necessidades",
-  "Saúde": "necessidades",
-  "Lazer": "lazer",
-  "Outros": "subscricoes",
+const CATEGORY_ALIASES: Record<string, string> = {
+  transporte: "Transportes",
+  transportes: "Transportes",
+  casa: "Habitação",
+  habitacao: "Habitação",
+};
+
+type ExpenseItem = {
+  name: string;
+  amount: number;
+  category: string;
+};
+
+type FinancialContext = {
+  userId: string;
+  spaceId: string;
+  currency: string;
+  categories: Array<{ id: string; name: string }>;
+};
+
+const normalizedName = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-PT");
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Ocorreu um erro inesperado";
+
+const currencySymbol = (currency: string) =>
+  currency === "BRL" ? "R$" : currency === "MZN" ? "Mt" : currency === "USD" ? "$" : "€";
+
+const validOccurredAt = (value: unknown) => {
+  if (typeof value !== "string") return new Date().toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 };
 
 const readBubbles = (): Bubble[] => {
@@ -40,15 +70,19 @@ const seedBubbles = (currency: string): Bubble[] => ([
 ]);
 
 const DashboardWhatsApp = () => {
-  const verified = useMemo(() => {
+  const financial = useFinancialContext();
+  const subscription = useSubscriptionV2();
+  const locallyVerified = (() => {
     try { return JSON.parse(localStorage.getItem("organizze.whatsapp") || "null"); } catch { return null; }
-  }, []);
-  const currency = useMemo(() => localStorage.getItem("organizze.currency") || "EUR", []);
-  const sym = currency === "BRL" ? "R$" : currency === "MZN" ? "Mt" : currency === "USD" ? "$" : "€";
+  })();
+  const initialCurrency = localStorage.getItem("organizze.currency") || "EUR";
+  const [verified, setVerified] = useState(Boolean(locallyVerified));
+  const [currency, setCurrency] = useState(initialCurrency);
+  const sym = currencySymbol(currency);
 
   const [bubbles, setBubbles] = useState<Bubble[]>(() => {
     const existing = readBubbles();
-    return existing.length ? existing : seedBubbles(currency);
+    return existing.length ? existing : seedBubbles(initialCurrency);
   });
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,6 +93,46 @@ const DashboardWhatsApp = () => {
     localStorage.setItem(STORAGE, JSON.stringify(bubbles));
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [bubbles]);
+
+  const resolveFinancialContext = useCallback(async (): Promise<FinancialContext> => {
+    const context = financial.data;
+    if (!context?.canWrite) throw new Error("Não tens um espaço ativo com permissão para registar despesas.");
+    return {
+      userId: context.userId,
+      spaceId: context.spaceId,
+      currency: context.currency,
+      categories: context.categories.filter((category) => category.transaction_type === "expense").map(({ id, name }) => ({ id, name })),
+    };
+  }, [financial.data]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadConnection = async () => {
+      try {
+        const context = await resolveFinancialContext();
+        if (!active) return;
+        setCurrency(context.currency);
+
+        const { data, error } = await supabaseV2
+          .from("whatsapp_connections")
+          .select("id")
+          .eq("space_id", context.spaceId)
+          .eq("linked_user_id", context.userId)
+          .eq("status", "active")
+          .not("verified_at", "is", null)
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (active) setVerified(Boolean(data));
+      } catch {
+        // The local marker keeps the initial UX usable while the V2 connection check is unavailable.
+      }
+    };
+
+    void loadConnection();
+    return () => { active = false; };
+  }, [resolveFinancialContext]);
 
   const push = (b: Omit<Bubble, "id" | "ts">) =>
     setBubbles((p) => [...p, { ...b, id: crypto.randomUUID(), ts: Date.now() }]);
@@ -72,39 +146,78 @@ const DashboardWhatsApp = () => {
     return id;
   };
 
-  const persistExpenses = (items: Array<{ name: string; amount: number; category: string }>) => {
-    const mapped: ExpenseEntry[] = items.map((it) => ({
-      id: crypto.randomUUID(),
-      name: it.name,
-      amount: Number(it.amount) || 0,
-      category: CATEGORY_TO_KEY[it.category] ?? "subscricoes",
-      source: "whatsapp",
-      createdAt: Date.now(),
-    }));
-    addExpenses(mapped);
+  const resolveCategoryId = (category: string, context: FinancialContext) => {
+    const canonical = CATEGORY_ALIASES[normalizedName(category)] ?? category;
+    const desired = normalizedName(canonical);
+    const exact = context.categories.find((item) => normalizedName(item.name) === desired);
+    const fallback = context.categories.find((item) => normalizedName(item.name) === "outros");
+    const resolved = exact ?? fallback;
+    if (!resolved) throw new Error("A categoria Outros não está disponível neste espaço.");
+    return resolved.id;
+  };
+
+  const persistExpenses = async (
+    items: ExpenseItem[],
+    context: FinancialContext,
+    merchant?: string | null,
+    occurredAt?: unknown,
+  ) => {
+    const transactions = items
+      .map((item) => ({ ...item, amount: Number(item.amount) }))
+      .filter((item) => Number.isFinite(item.amount) && item.amount > 0)
+      .map((item) => ({
+        space_id: context.spaceId,
+        created_by: context.userId,
+        category_id: resolveCategoryId(item.category || "Outros", context),
+        transaction_type: "expense" as const,
+        source: "app" as const,
+        status: "cleared" as const,
+        amount: item.amount,
+        currency: context.currency,
+        description: item.name || "Despesa",
+        merchant: merchant?.trim() || null,
+        occurred_at: validOccurredAt(occurredAt),
+      }));
+    if (!transactions.length) throw new Error("Não foi encontrado um valor válido para registar.");
+
+    const { error } = await supabaseV2.from("transactions").insert(transactions);
+    if (error) throw error;
   };
 
   const handlePhoto = async (file: File) => {
     if (busy) return;
     setBusy(true);
     try {
+      const context = await resolveFinancialContext();
+      setCurrency(context.currency);
       const dataUrl = await fileToCompressedBase64(file);
       push({ from: "user", kind: "image", imageUrl: dataUrl });
       const loadingId = pushLoading("🧾 Recibo recebido! A extrair os itens...");
       const { data, error } = await supabase.functions.invoke("parse-receipt", {
-        body: { imageBase64: dataUrl, currency },
+        body: { imageBase64: dataUrl, currency: context.currency },
       });
       if (error || !data || data.error) throw new Error(data?.error || error?.message || "Falhou");
-      const items = Array.isArray(data.items) ? data.items : [];
-      const total = data.total ?? items.reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
+      const items: ExpenseItem[] = Array.isArray(data.items)
+        ? data.items.map((item: unknown) => {
+            const candidate = item as Partial<ExpenseItem>;
+            return {
+              name: typeof candidate.name === "string" ? candidate.name : "Despesa",
+              amount: Number(candidate.amount),
+              category: typeof candidate.category === "string" ? candidate.category : "Outros",
+            };
+          }).filter((item: ExpenseItem) => Number.isFinite(item.amount) && item.amount > 0)
+        : [];
+      const total = Number(data.total) > 0
+        ? Number(data.total)
+        : items.reduce((sum, item) => sum + item.amount, 0);
       if (!items.length) {
         replaceLoading(loadingId, { from: "bot", kind: "text", text: "Não consegui ler nenhum item neste recibo. Tenta outra foto?" });
       } else {
-        replaceLoading(loadingId, { from: "bot", kind: "items", items, total, currency: data.currency || currency });
-        persistExpenses(items);
+        await persistExpenses(items, context, typeof data.merchant === "string" ? data.merchant : null, data.date);
+        replaceLoading(loadingId, { from: "bot", kind: "items", items, total, currency: context.currency });
       }
-    } catch (e: any) {
-      toast({ title: "Erro ao processar recibo", description: e.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erro ao processar recibo", description: errorMessage(error), variant: "destructive" });
       push({ from: "bot", kind: "text", text: "❌ Não consegui processar — tenta novamente." });
     } finally {
       setBusy(false);
@@ -120,8 +233,10 @@ const DashboardWhatsApp = () => {
     setBusy(true);
     const loadingId = pushLoading("A registar...");
     try {
+      const context = await resolveFinancialContext();
+      setCurrency(context.currency);
       const { data, error } = await supabase.functions.invoke("parse-expense-text", {
-        body: { text: t, currency },
+        body: { text: t, currency: context.currency },
       });
       if (error || !data || data.error) throw new Error(data?.error || error?.message || "Falhou");
       const amount = Number(data.amount);
@@ -130,10 +245,10 @@ const DashboardWhatsApp = () => {
         return;
       }
       const item = { name: data.description || "Despesa", amount, category: data.category || "Outros" };
-      replaceLoading(loadingId, { from: "bot", kind: "items", items: [item], total: amount, currency: data.currency || currency });
-      persistExpenses([item]);
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      await persistExpenses([item], context, typeof data.merchant === "string" ? data.merchant : null);
+      replaceLoading(loadingId, { from: "bot", kind: "items", items: [item], total: amount, currency: context.currency });
+    } catch (error: unknown) {
+      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
       replaceLoading(loadingId, { from: "bot", kind: "text", text: "❌ Não consegui processar." });
     } finally {
       setBusy(false);
@@ -145,23 +260,54 @@ const DashboardWhatsApp = () => {
     setBusy(true);
     const loadingId = pushLoading("📅 A preparar o teu resumo mensal...");
     try {
-      const expenses = JSON.parse(localStorage.getItem("organizze.expenses") || "[]");
-      const { data, error } = await supabase.functions.invoke("monthly-summary", {
-        body: { expenses, currency, month: new Date().toLocaleString("pt-PT", { month: "long", year: "numeric" }) },
-      });
-      if (error || !data?.summary) throw new Error(error?.message || "Falhou");
-      replaceLoading(loadingId, { from: "bot", kind: "summary", text: data.summary });
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      const context = await resolveFinancialContext();
+      setCurrency(context.currency);
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const { data: transactions, error } = await supabaseV2
+        .from("transactions")
+        .select("amount, category_id")
+        .eq("space_id", context.spaceId)
+        .eq("transaction_type", "expense")
+        .is("deleted_at", null)
+        .gte("occurred_at", monthStart)
+        .lt("occurred_at", nextMonth);
+      if (error) throw error;
+
+      const categoryNames = new Map(context.categories.map((category) => [category.id, category.name]));
+      const totals = new Map<string, number>();
+      for (const transaction of transactions ?? []) {
+        const name = transaction.category_id ? categoryNames.get(transaction.category_id) ?? "Outros" : "Outros";
+        totals.set(name, (totals.get(name) ?? 0) + Number(transaction.amount));
+      }
+      const formatter = new Intl.NumberFormat("pt-PT", { style: "currency", currency: context.currency });
+      const total = [...totals.values()].reduce((sum, amount) => sum + amount, 0);
+      const categories = [...totals.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-PT"))
+        .map(([name, amount]) => `${name}: ${formatter.format(amount)}`);
+      const month = now.toLocaleString("pt-PT", { month: "long", year: "numeric" });
+      const summary = transactions?.length
+        ? `${month}\n${transactions.length} ${transactions.length === 1 ? "despesa" : "despesas"} · ${formatter.format(total)}\n\n${categories.join("\n")}`
+        : `${month}\nAinda não há despesas registadas neste mês.`;
+      replaceLoading(loadingId, { from: "bot", kind: "summary", text: summary });
+    } catch (error: unknown) {
+      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
       replaceLoading(loadingId, { from: "bot", kind: "text", text: "❌ Não consegui gerar o resumo." });
     } finally {
       setBusy(false);
     }
   };
 
+  if (!subscription.isLoading && !capabilitiesForSubscription(subscription.data?.status).whatsapp) {
+    return <div className="mx-auto max-w-lg py-16 text-center"><MessageCircle size={36} className="mx-auto text-muted-foreground/50" /><h2 className="mt-4 font-serif text-2xl font-semibold">WhatsApp no plano Pro</h2><p className="mt-2 text-sm text-muted-foreground">Ativa uma assinatura para registar despesas e recibos automaticamente.</p><Button asChild className="mt-5"><Link to="/dashboard/assinatura">Ver planos</Link></Button></div>;
+  }
+
   if (!verified) {
     return (
-      <div className="max-w-md mx-auto text-center py-10 space-y-4">
+      <div className="space-y-4">
+        <PageHeader eyebrow="Partilhar e automatizar" title="WhatsApp" description="Regista despesas por mensagem e envia fotos de recibos para processamento automático." />
+        <div className="mx-auto max-w-md space-y-4 py-6 text-center">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center">
           <MessageCircle size={26} />
         </div>
@@ -172,6 +318,7 @@ const DashboardWhatsApp = () => {
         <Link to="/onboarding/whatsapp">
           <Button className="gap-2"><MessageCircle size={16} /> Conectar WhatsApp</Button>
         </Link>
+        </div>
       </div>
     );
   }

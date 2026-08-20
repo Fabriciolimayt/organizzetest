@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -21,13 +22,19 @@ import DashboardRelatorios from "./pages/DashboardRelatorios";
 import DashboardLimiteGastos from "./pages/DashboardLimiteGastos";
 import DashboardOrcamento from "./pages/DashboardOrcamento";
 import DashboardPlanos from "./pages/DashboardPlanos";
+import DashboardObjetivos from "./pages/DashboardObjetivos";
 import DashboardGrupos from "./pages/DashboardGrupos";
 import DashboardWhatsApp from "./pages/DashboardWhatsApp";
 import DashboardDiagnosticoWhatsApp from "./pages/DashboardDiagnosticoWhatsApp";
+import DashboardAssinatura from "./pages/DashboardAssinatura";
+import AcceptInvitation from "./pages/AcceptInvitation";
 
 import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
+const PrimitiveShowcase = import.meta.env.DEV
+  ? lazy(() => import("@/components/design-system/PrimitiveShowcase"))
+  : null;
 
 const Protected = ({ children }: { children: JSX.Element }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
@@ -40,10 +47,21 @@ const App = () => (
         <AuthProvider>
           <TourProvider>
           <Routes>
+            {import.meta.env.DEV && PrimitiveShowcase && (
+              <Route
+                path="/__design-system"
+                element={
+                  <Suspense fallback={null}>
+                    <PrimitiveShowcase />
+                  </Suspense>
+                }
+              />
+            )}
             <Route path="/" element={<Index />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/signup" element={<Navigate to="/auth" replace />} />
+            <Route path="/convite" element={<AcceptInvitation />} />
             <Route path="/onboarding/nome" element={<Protected><OnboardingNome /></Protected>} />
             <Route path="/onboarding/idioma" element={<Protected><OnboardingIdioma /></Protected>} />
             <Route path="/onboarding/moeda" element={<Protected><OnboardingMoeda /></Protected>} />
@@ -56,9 +74,11 @@ const App = () => (
               <Route path="limite-de-gastos" element={<DashboardLimiteGastos />} />
               <Route path="orcamento" element={<DashboardOrcamento />} />
               <Route path="planos" element={<DashboardPlanos />} />
+              <Route path="objetivos" element={<DashboardObjetivos />} />
               <Route path="grupos" element={<DashboardGrupos />} />
               <Route path="whatsapp" element={<DashboardWhatsApp />} />
               <Route path="diagnostico-whatsapp" element={<DashboardDiagnosticoWhatsApp />} />
+              <Route path="assinatura" element={<DashboardAssinatura />} />
 
             </Route>
             <Route path="*" element={<NotFound />} />

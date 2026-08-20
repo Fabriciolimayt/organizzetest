@@ -1,5 +1,5 @@
 export type WaCountry = {
-  code: "BR" | "PT" | "GB" | "MZ";
+  code: "BR" | "PT" | "GB" | "MZ" | "US";
   flag: string;
   ddi: string;
   name: string;
@@ -12,6 +12,7 @@ export const WA_COUNTRIES: WaCountry[] = [
   { code: "BR", flag: "🇧🇷", ddi: "+55", name: "Brasil", placeholder: "11 99999-9999", minDigits: 10 },
   { code: "GB", flag: "🇬🇧", ddi: "+44", name: "Reino Unido", placeholder: "7700 900123", minDigits: 10 },
   { code: "MZ", flag: "🇲🇿", ddi: "+258", name: "Moçambique", placeholder: "84 123 4567", minDigits: 9 },
+  { code: "US", flag: "🇺🇸", ddi: "+1", name: "Estados Unidos", placeholder: "949 664 9404", minDigits: 10 },
 ];
 
 // WhatsApp Business Cloud API (Meta) bot number — internacional, sem "+".
@@ -24,7 +25,7 @@ export const countryForCurrency = (currency: string): WaCountry => {
     EUR: "PT",
     BRL: "BR",
     MZN: "MZ",
-    USD: "GB",
+    USD: "US",
     GBP: "GB",
   };
   const code = map[currency] ?? "PT";

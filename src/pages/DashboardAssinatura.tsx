@@ -1,188 +1,78 @@
 import { useMemo, useState } from "react";
-import { Check, Sparkles } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
+import { Check, CreditCard, Loader2, ShieldCheck, X } from "lucide-react";
+
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
+import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/dashboard/PageHeader";
+import { useAuth } from "@/hooks/useAuth";
+import { useFinancialContext } from "@/hooks/useFinancialContext";
+import { useSubscriptionV2 } from "@/hooks/useSubscriptionV2";
+import { capabilitiesForSubscription } from "@/lib/finance/capabilities";
 
-type Currency = "EUR" | "BRL" | "USD" | "MZN";
+const OFFERS = [
+  { id: "pro", name: "Pro", lookupPrefix: "pro_monthly", features: ["Lançamentos pelo WhatsApp", "Planos ilimitados", "Grupos ilimitados", "Resumo mensal"] },
+  { id: "premium", name: "Premium", lookupPrefix: "premium_monthly", features: ["Tudo do Pro", "Leitura avançada de recibos", "Relatórios completos", "Suporte prioritário"] },
+] as const;
 
-const currencyMeta: Record<Currency, { symbol: string; flag: string; label: string }> = {
-  EUR: { symbol: "€", flag: "🇪🇺", label: "Euro" },
-  BRL: { symbol: "R$", flag: "🇧🇷", label: "Real" },
-  USD: { symbol: "$", flag: "🇺🇸", label: "Dólar" },
-  MZN: { symbol: "MT", flag: "🇲🇿", label: "Metical" },
+const STATUS_LABELS: Record<string, string> = {
+  incomplete: "Configuração incompleta",
+  trialing: "Período experimental",
+  active: "Ativa",
+  past_due: "Pagamento pendente",
+  canceled: "Cancelada",
+  unpaid: "Pagamento em falta",
 };
-
-const plans = [
-  {
-    id: "free",
-    name: "Grátis",
-    tagline: "Para começar a organizar-te.",
-    priceIds: {} as Record<Currency, string>,
-    prices: { EUR: "0", BRL: "0", USD: "0", MZN: "0" } as Record<Currency, string>,
-    features: ["Dashboard completo", "Orçamento 50/30/20", "1 plano", "1 grupo"],
-    cta: "Estás no plano Grátis",
-    highlight: false,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    tagline: "Automação por WhatsApp e planos ilimitados.",
-    priceIds: {
-      EUR: "pro_monthly_eur",
-      BRL: "pro_monthly_brl",
-      USD: "pro_monthly_usd",
-      MZN: "pro_monthly_mzn",
-    },
-    prices: { EUR: "9", BRL: "49", USD: "9,99", MZN: "599" },
-    features: [
-      "Tudo do Grátis",
-      "Lançamento por WhatsApp",
-      "Planos ilimitados",
-      "Grupos ilimitados",
-      "Relatório mensal automático",
-    ],
-    cta: "Assinar Pro",
-    highlight: true,
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    tagline: "OCR avançado de facturas e suporte prioritário.",
-    priceIds: {
-      EUR: "premium_monthly_eur",
-      BRL: "premium_monthly_brl",
-      USD: "premium_monthly_usd",
-      MZN: "premium_monthly_mzn",
-    },
-    prices: { EUR: "19", BRL: "99", USD: "19,99", MZN: "1.199" },
-    features: [
-      "Tudo do Pro",
-      "OCR premium de facturas",
-      "Relatórios PDF",
-      "Suporte prioritário",
-      "Acesso antecipado a novidades",
-    ],
-    cta: "Assinar Premium",
-    highlight: false,
-  },
-];
 
 export default function DashboardAssinatura() {
   const { user } = useAuth();
-  const [currency, setCurrency] = useState<Currency>(() => {
-    const stored = (typeof window !== "undefined" && localStorage.getItem("organizze.currency")) || "EUR";
-    return (["EUR", "BRL", "USD", "MZN"].includes(stored) ? stored : "EUR") as Currency;
-  });
+  const financial = useFinancialContext();
+  const subscription = useSubscriptionV2();
   const [checkoutPriceId, setCheckoutPriceId] = useState<string | null>(null);
+  const locale = financial.data?.locale ?? "pt-PT";
+  const currency = financial.data?.currency ?? "EUR";
+  const current = subscription.data;
+  const lifetimeAccess = current?.provider === "complimentary" && current.status === "active" && !current.current_period_end;
+  const capabilities = capabilitiesForSubscription(current?.status);
+  const returnUrl = useMemo(() => `${window.location.origin}/dashboard/assinatura?session_id={CHECKOUT_SESSION_ID}`, []);
 
-  const returnUrl = useMemo(
-    () => `${window.location.origin}/dashboard/assinatura?session_id={CHECKOUT_SESSION_ID}`,
-    []
-  );
+  if (subscription.isLoading || financial.isLoading) return <PageState loading message="A carregar a assinatura..." />;
+  if (subscription.error || financial.error) return <PageState message="Não foi possível consultar a assinatura." action={<Button variant="outline" onClick={() => { void subscription.refetch(); void financial.refetch(); }}>Tentar novamente</Button>} />;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-5xl space-y-6">
       <PaymentTestModeBanner />
+      <PageHeader eyebrow="Partilhar e automatizar" title="Assinatura" description="Consulta o estado atual e escolhe as funcionalidades adequadas ao teu uso." />
 
-      <header className="mb-8 mt-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-accent font-medium mb-2">Assinatura</p>
-        <h1 className="font-display text-4xl sm:text-5xl text-foreground leading-tight">
-          Escolhe o plano que <em className="text-accent not-italic">acompanha o teu ritmo</em>.
-        </h1>
-        <p className="text-muted-foreground mt-3 max-w-xl">
-          Todos os planos incluem cancelamento a qualquer momento. Preços em {currencyMeta[currency].label}.
-        </p>
-      </header>
+      <section className="grid gap-4 border-y border-border py-5 sm:grid-cols-3">
+        <Status label="Estado" value={lifetimeAccess ? "Acesso vitalício" : current ? STATUS_LABELS[current.status] ?? current.status : "Plano gratuito"} />
+        <Status label="Renovação" value={lifetimeAccess ? "Acesso permanente" : current?.current_period_end ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(current.current_period_end)) : "Sem renovação agendada"} />
+        <Status label="Ambiente" value={current?.environment === "live" ? "Produção" : current?.environment ?? "Produção"} />
+      </section>
 
-      <div className="flex flex-wrap gap-2 mb-8">
-        {(Object.keys(currencyMeta) as Currency[]).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCurrency(c)}
-            className={`px-4 py-2 rounded-full text-sm border transition-colors ${
-              currency === c
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-foreground border-border hover:border-primary/40"
-            }`}
-          >
-            {currencyMeta[c].flag} {c}
-          </button>
-        ))}
+      <div className="rounded-md border border-border bg-muted/40 p-4">
+        <div className="flex items-start gap-3"><ShieldCheck size={20} className="mt-0.5 text-primary" /><div><p className="font-medium">Capacidades atuais</p><p className="mt-1 text-sm text-muted-foreground">WhatsApp {capabilities.whatsapp ? "ativo" : "indisponível"} · Planos {capabilities.unlimitedPlans ? "ilimitados" : "limitados"} · Grupos {capabilities.unlimitedGroups ? "ilimitados" : "limitados"}</p></div></div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {plans.map((plan) => {
-          const priceId = plan.priceIds[currency];
-          const isFree = plan.id === "free";
-          return (
-            <div
-              key={plan.id}
-              className={`relative rounded-2xl border p-6 flex flex-col ${
-                plan.highlight
-                  ? "border-accent/50 bg-gradient-to-b from-accent/5 to-transparent shadow-[0_0_60px_-15px_hsl(var(--accent)/0.35)]"
-                  : "border-border bg-card"
-              }`}
-            >
-              {plan.highlight && (
-                <span className="absolute -top-3 left-6 bg-accent text-accent-foreground text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full inline-flex items-center gap-1">
-                  <Sparkles size={12} /> Mais popular
-                </span>
-              )}
-              <h3 className="font-display text-2xl text-foreground">{plan.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-6">{plan.tagline}</p>
-              <div className="mb-6">
-                <span className="font-display text-5xl text-foreground">
-                  {currencyMeta[currency].symbol} {plan.prices[currency]}
-                </span>
-                {!isFree && <span className="text-muted-foreground text-sm ml-1">/mês</span>}
-              </div>
-              <ul className="space-y-2.5 mb-8 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex gap-2 text-sm text-foreground/90">
-                    <Check size={16} className="text-primary shrink-0 mt-0.5" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                disabled={isFree}
-                onClick={() => priceId && setCheckoutPriceId(priceId)}
-                className={`w-full ${
-                  plan.highlight ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""
-                }`}
-                variant={plan.highlight ? "default" : "outline"}
-              >
-                {isFree ? plan.cta : plan.cta}
-              </Button>
-            </div>
-          );
+      {!lifetimeAccess && <div className="grid gap-4 md:grid-cols-2">
+        {OFFERS.map((offer) => {
+          const priceId = `${offer.lookupPrefix}_${currency.toLocaleLowerCase("en-US")}`;
+          const currentOffer = current?.price_id?.includes(offer.id) && (current.status === "active" || current.status === "trialing");
+          return <section key={offer.id} className="flex flex-col rounded-md border border-border bg-card p-5"><div className="mb-5"><h2 className="font-serif text-xl font-semibold">{offer.name}</h2><p className="mt-1 text-sm text-muted-foreground">O valor final e os impostos são confirmados com segurança no checkout.</p></div><ul className="mb-6 flex-1 space-y-2">{offer.features.map((feature) => <li key={feature} className="flex items-center gap-2 text-sm"><Check size={15} className="text-primary" />{feature}</li>)}</ul><Button variant={offer.id === "pro" ? "default" : "outline"} disabled={Boolean(currentOffer)} onClick={() => setCheckoutPriceId(priceId)}><CreditCard size={16} />{currentOffer ? "Plano atual" : `Escolher ${offer.name}`}</Button></section>;
         })}
-      </div>
+      </div>}
 
-      {checkoutPriceId && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
-          <div className="max-w-3xl mx-auto p-4 sm:p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-2xl text-foreground">Finalizar assinatura</h2>
-              <button
-                onClick={() => setCheckoutPriceId(null)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Cancelar
-              </button>
-            </div>
-            <div className="bg-card rounded-2xl border border-border p-4">
-              <StripeEmbeddedCheckout
-                priceId={checkoutPriceId}
-                userId={user?.id}
-                customerEmail={user?.email ?? undefined}
-                returnUrl={returnUrl}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {current?.cancel_at_period_end && <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">A assinatura está ativa até ao fim do período atual e não será renovada automaticamente.</p>}
+
+      {checkoutPriceId && <div className="fixed inset-0 z-50 overflow-y-auto bg-background/95"><div className="mx-auto max-w-3xl p-4 sm:p-8"><div className="mb-5 flex items-center justify-between"><h2 className="font-serif text-xl font-semibold">Finalizar assinatura</h2><Button variant="ghost" size="icon" title="Fechar checkout" onClick={() => setCheckoutPriceId(null)}><X size={18} /></Button></div><div className="rounded-md border border-border bg-card p-4"><StripeEmbeddedCheckout priceId={checkoutPriceId} userId={user?.id} customerEmail={user?.email ?? undefined} returnUrl={returnUrl} /></div></div></div>}
     </div>
   );
+}
+
+function Status({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-1 font-semibold">{value}</p></div>;
+}
+
+function PageState({ message, loading, action }: { message: string; loading?: boolean; action?: React.ReactNode }) {
+  return <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">{loading && <Loader2 size={20} className="animate-spin" />}<p>{message}</p>{action}</div>;
 }

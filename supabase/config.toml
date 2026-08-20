@@ -1,4 +1,8 @@
-project_id = "lxlsrnysjtojnlhvjjew"
+project_id = "mvnpfnmplnsdfkufghgh"
+
+[api]
+schemas = ["public", "graphql_public", "app_v2"]
+extra_search_path = ["public", "extensions", "app_v2"]
 
 [functions.parse-receipt]
 verify_jwt = true
@@ -10,6 +14,12 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-ingest]
+verify_jwt = false
+
+[functions.whatsapp-process]
 verify_jwt = false
 
 [functions.create-checkout]

@@ -8,7 +8,7 @@ interface SocialLoginButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 const SocialLoginButton = ({ icon, children, ...props }: SocialLoginButtonProps) => (
   <button
     {...props}
-    className="btn-glass w-full flex items-center justify-center gap-3 px-4 py-3 rounded-full text-foreground font-medium"
+    className="focus-ring interactive-control flex min-h-11 w-full items-center justify-center gap-3 rounded-md border border-border bg-card px-4 text-foreground font-medium hover:bg-muted"
   >
     {icon}
     {children}

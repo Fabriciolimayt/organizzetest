@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, RefreshCw, Send, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/dashboard/PageHeader";
 import { toast } from "@/hooks/use-toast";
 
 type DiagEvent = {
@@ -21,6 +22,14 @@ type DiagData = {
   events: DiagEvent[];
 };
 
+type DiagnosticTestResponse = {
+  ok?: boolean;
+  status?: unknown;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
 const SECRET_LABELS: Record<string, string> = {
   DATAFY_TOKEN: "Datafy Token (sk_live_...)",
   DATAFY_WEBHOOK_SECRET: "Webhook secret (assinatura)",
@@ -39,8 +48,8 @@ const DashboardDiagnosticoWhatsApp = () => {
       const { data: res, error } = await supabase.functions.invoke("whatsapp-diagnostico", { method: "GET" });
       if (error) throw error;
       setData(res as DiagData);
-    } catch (e: any) {
-      toast({ title: "Erro a carregar diagnóstico", description: e?.message ?? String(e), variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro a carregar diagnóstico", description: getErrorMessage(e), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -57,11 +66,12 @@ const DashboardDiagnosticoWhatsApp = () => {
     try {
       const { data: res, error } = await supabase.functions.invoke("whatsapp-diagnostico", { method: "POST" });
       if (error) throw error;
-      if ((res as any)?.ok) toast({ title: "✅ Mensagem de teste enviada" });
-      else toast({ title: "❌ Falhou ao enviar", description: `Status ${(res as any)?.status}`, variant: "destructive" });
+      const result = res as DiagnosticTestResponse | null;
+      if (result?.ok) toast({ title: "✅ Mensagem de teste enviada" });
+      else toast({ title: "❌ Falhou ao enviar", description: `Status ${result?.status}`, variant: "destructive" });
       load();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e?.message ?? String(e), variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: getErrorMessage(e), variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -69,16 +79,7 @@ const DashboardDiagnosticoWhatsApp = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-serif font-bold tracking-tight">Diagnóstico WhatsApp</h1>
-          <p className="text-sm text-muted-foreground">Estado da integração Datafy + últimos eventos do webhook.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          Atualizar
-        </Button>
-      </div>
+      <PageHeader eyebrow="Partilhar e automatizar" title="Diagnóstico WhatsApp" description="Estado da integração e últimos eventos do webhook." actions={<Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Atualizar</Button>} />
 
       {/* Secrets */}
       <section className="rounded-2xl border border-border bg-card p-5">

@@ -23,6 +23,29 @@ const ALLOWED_CATEGORIES = new Set([
 ]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+type InvoiceExtraction = Record<string, unknown>;
+
+type WhatsAppMessage = {
+  from?: string;
+  type?: string;
+  text?: { body?: string };
+  image?: { id?: string; mime_type?: string };
+};
+
+type WhatsAppWebhookPayload = {
+  entry?: Array<{
+    changes?: Array<{
+      value?: { messages?: WhatsAppMessage[] };
+    }>;
+  }>;
+};
+
+type GeminiResponse = {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string }> };
+  }>;
+};
+
 function truncate(s: unknown, n: number): string | null {
   if (s == null) return null;
   const str = String(s);
@@ -115,13 +138,14 @@ If a field cannot be determined, use null. Amount must be the total paid.`;
       }),
     },
   );
-  const data = await res.json();
+  const data = await res.json() as GeminiResponse;
   const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-  let parsed: any = null;
+  let parsed: InvoiceExtraction | null = null;
   try {
     const m = rawText.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(m ? m[0] : rawText);
-  } catch (_) {
+    parsed = JSON.parse(m ? m[0] : rawText) as InvoiceExtraction;
+  } catch {
+    // A non-JSON Gemini reply is handled as an unreadable invoice below.
     parsed = null;
   }
   return { parsed, rawText };
@@ -172,15 +196,20 @@ Deno.serve(async (req) => {
     return new Response("Forbidden", { status: 403 });
   }
 
-  let body: any;
-  try { body = JSON.parse(rawBody); } catch { return new Response("OK"); }
+  let body: WhatsAppWebhookPayload;
+  try {
+    body = JSON.parse(rawBody) as WhatsAppWebhookPayload;
+  } catch {
+    return new Response("OK");
+  }
 
   const entry = body?.entry?.[0];
   const change = entry?.changes?.[0];
   const message = change?.value?.messages?.[0];
   if (!message) return new Response("OK");
 
-  const from: string = message.from;
+  if (!message.from) return new Response("OK");
+  const from = message.from;
 
   // ── Verification handshake: detect "moedas-verify-XXXX" before any auth lookup ──
   const incomingText: string | undefined =

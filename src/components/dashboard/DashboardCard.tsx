@@ -1,23 +1,28 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface DashboardCardProps {
   title?: string;
+  description?: string;
   headerRight?: ReactNode;
   children: ReactNode;
   className?: string;
   noPadding?: boolean;
 }
 
-const DashboardCard = ({ title, headerRight, children, className = "", noPadding }: DashboardCardProps) => (
-  <div className={`glass-card transition-shadow hover:shadow-[0_0_40px_-10px_hsl(var(--primary)/0.35)] ${className}`}>
+const DashboardCard = ({ title, description, headerRight, children, className = "", noPadding }: DashboardCardProps) => (
+  <section className={cn("surface-panel overflow-hidden transition-[border-color,box-shadow,transform] duration-200 hover:border-foreground/50", className)}>
     {title && (
-      <div className="flex items-center justify-between px-5 pt-5 pb-2">
-        <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight">{title}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h3 className="editorial-display text-xl font-semibold text-foreground">{title}</h3>
+          {description && <p className="mt-1 text-body-small text-muted-foreground">{description}</p>}
+        </div>
         {headerRight}
       </div>
     )}
     <div className={noPadding ? "" : "p-5"}>{children}</div>
-  </div>
+  </section>
 );
 
 export default DashboardCard;

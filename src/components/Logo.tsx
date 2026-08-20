@@ -4,51 +4,37 @@ type LogoProps = {
 };
 
 const SIZES = {
-  sm: { text: "text-sm", box: 18, gap: "gap-2", trackingIdle: "tracking-[0.35em]", trackingHover: "group-hover:tracking-[0.25em]" },
-  md: { text: "text-base", box: 22, gap: "gap-2.5", trackingIdle: "tracking-[0.4em]", trackingHover: "group-hover:tracking-[0.28em]" },
-  lg: { text: "text-xl", box: 28, gap: "gap-3", trackingIdle: "tracking-[0.45em]", trackingHover: "group-hover:tracking-[0.3em]" },
+  sm: { text: "text-sm", box: 20, gap: "gap-2" },
+  md: { text: "text-base", box: 24, gap: "gap-2.5" },
+  lg: { text: "text-xl", box: 28, gap: "gap-3" },
 };
 
 const Logo = ({ size = "md", white = false }: LogoProps) => {
-  const s = SIZES[size];
-  const perimeter = s.box * 4;
-  const textColor = white ? "text-white" : "text-foreground";
-  const strokeColor = white ? "text-white" : "text-primary";
-  const weight = white ? "font-bold" : "font-semibold";
-
+  const sizing = SIZES[size];
+  const color = white ? "text-white" : "text-foreground";
+  const markColor = white ? "text-white" : "text-primary";
 
   return (
-    <div
-      className={`group inline-flex items-center ${s.gap} bg-transparent`}
-      aria-label="organizze"
-    >
+    <span className={`inline-flex items-center ${sizing.gap} ${color}`} aria-label="Organizze">
       <svg
-        width={s.box}
-        height={s.box}
-        viewBox={`0 0 ${s.box} ${s.box}`}
+        width={sizing.box}
+        height={sizing.box}
+        viewBox="0 0 24 24"
         fill="none"
-        className={`${strokeColor} shrink-0`}
+        aria-hidden="true"
+        className={`shrink-0 ${markColor}`}
       >
-        <rect
-          x="1"
-          y="1"
-          width={s.box - 2}
-          height={s.box - 2}
+        <rect x="3" y="2.5" width="18" height="19" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M7.5 7.5H16.5M7.5 12H16.5M7.5 16.5H13"
           stroke="currentColor"
-          strokeWidth="1.25"
-          strokeDasharray={perimeter}
-          strokeDashoffset={perimeter * 0.3}
-          rx="2"
-          className="transition-[stroke-dashoffset] duration-500 ease-out group-hover:[stroke-dashoffset:0]"
+          strokeWidth="1.5"
+          strokeLinecap="round"
         />
+        <path d="M6 2.5V21.5" stroke="currentColor" strokeWidth="1.5" />
       </svg>
-      <span
-        className={`${weight} ${s.text} ${s.trackingIdle} ${s.trackingHover} ${textColor} transition-[letter-spacing] duration-500 ease-out`}
-      >
-
-        ORGANIZZE
-      </span>
-    </div>
+      <span className={`${sizing.text} font-semibold leading-none`}>Organizze</span>
+    </span>
   );
 };
 

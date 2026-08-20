@@ -5,28 +5,25 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const navLinks = [
-  { label: "Início", href: "/" },
-  { label: "Conexão Bancária", href: "#" },
-  { label: "Quem somos", href: "#" },
-  { label: "Recursos", href: "#" },
-  { label: "Planos", href: "#" },
-  { label: "Blog", href: "#" },
+  { label: "Método", href: "#metodo" },
+  { label: "WhatsApp", href: "#whatsapp" },
+  { label: "Privacidade", href: "#privacidade" },
 ];
 
 const LandingHeader = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="w-full sticky top-0 z-50 glass-panel border-b border-[hsl(var(--glass-border))]">
-      <div className="max-w-7xl mx-auto py-3 px-6 lg:px-12 flex items-center justify-between">
-        <Logo />
+    <header className="sticky top-0 z-50 w-full border-b border-white/15 bg-ink text-white">
+      <div className="mx-auto flex min-h-[68px] max-w-[1440px] items-center justify-between px-6 lg:px-16">
+        <Logo white />
 
         <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-[hsl(var(--glass-highlight))] px-3 py-1.5 rounded-full transition-all"
+              className="focus-ring px-3 py-2 font-mono text-[10px] font-semibold uppercase text-white/55 transition-colors hover:text-white"
             >
               {link.label}
             </a>
@@ -34,28 +31,28 @@ const LandingHeader = () => {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Link to="/signup" className="text-sm font-medium text-foreground/80 hover:text-primary-glow transition-colors">
-            Login
+          <Link to="/auth" className="text-sm font-medium text-white/65 transition-colors hover:text-white">
+            Entrar
           </Link>
-          <Link to="/signup">
-            <Button>Comece já!</Button>
+          <Link to="/auth">
+            <Button className="border-marker !bg-marker !text-foreground shadow-none hover:!bg-marker/90">Começar</Button>
           </Link>
         </div>
 
-        <button className="lg:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button type="button" aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"} aria-expanded={mobileOpen} className="focus-ring flex size-11 items-center justify-center text-white lg:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
       {mobileOpen && (
-        <div className="lg:hidden pb-4 px-6 flex flex-col gap-3 border-t border-[hsl(var(--glass-border))]">
+        <div className="flex flex-col gap-3 border-t border-white/15 bg-ink px-6 pb-5 lg:hidden">
           {navLinks.map((link) => (
-            <a key={link.label} href={link.href} className="text-sm font-medium text-foreground/80 pt-2">
+            <a key={link.label} href={link.href} onClick={() => setMobileOpen(false)} className="pt-3 font-mono text-xs font-semibold uppercase text-white/65">
               {link.label}
             </a>
           ))}
-          <Link to="/signup" className="text-sm font-medium text-foreground">Login</Link>
-          <Link to="/signup"><Button className="w-full">Comece já!</Button></Link>
+          <Link to="/auth" className="py-1 text-sm font-medium text-white">Entrar</Link>
+          <Link to="/auth"><Button className="w-full border-marker !bg-marker !text-foreground shadow-none">Começar</Button></Link>
         </div>
       )}
     </header>

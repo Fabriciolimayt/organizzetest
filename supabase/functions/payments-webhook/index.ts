@@ -1,6 +1,26 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { type StripeEnv, verifyWebhook } from "../_shared/stripe.ts";
 
+type StripeSubscription = {
+  id: string;
+  customer?: string | null;
+  status?: string;
+  metadata?: { userId?: string };
+  items?: {
+    data?: Array<{
+      price?: {
+        lookup_key?: string | null;
+        metadata?: { lovable_external_id?: string | null };
+        id?: string | null;
+        product?: string | null;
+      };
+    }>;
+  };
+  current_period_start?: number | null;
+  current_period_end?: number | null;
+  cancel_at_period_end?: boolean | null;
+};
+
 let _supabase: ReturnType<typeof createClient> | null = null;
 function getSupabase() {
   if (!_supabase) {
@@ -13,7 +33,7 @@ function isoFromUnix(seconds: number | null | undefined) {
   return seconds ? new Date(seconds * 1000).toISOString() : null;
 }
 
-async function upsertSubscription(subscription: any, env: StripeEnv) {
+async function upsertSubscription(subscription: StripeSubscription, env: StripeEnv) {
   const userId = subscription.metadata?.userId;
   if (!userId) {
     console.error("subscription without userId metadata");
@@ -43,7 +63,7 @@ async function upsertSubscription(subscription: any, env: StripeEnv) {
   );
 }
 
-async function markCanceled(subscription: any, env: StripeEnv) {
+async function markCanceled(subscription: StripeSubscription, env: StripeEnv) {
   await getSupabase()
     .from("subscriptions")
     .update({ status: "canceled", updated_at: new Date().toISOString() })
@@ -66,10 +86,10 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
-        await upsertSubscription(event.data.object, env);
+        await upsertSubscription(event.data.object as StripeSubscription, env);
         break;
       case "customer.subscription.deleted":
-        await markCanceled(event.data.object, env);
+        await markCanceled(event.data.object as StripeSubscription, env);
         break;
       default:
         console.log("Unhandled event:", event.type);
