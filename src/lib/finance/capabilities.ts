@@ -1,6 +1,10 @@
-import type { Database } from "@/integrations/supabase/types";
-
-export type SubscriptionStatus = Database["app_v2"]["Enums"]["subscription_status"];
+export type SubscriptionStatus =
+  | "incomplete"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid";
 
 export type SubscriptionLike = {
   status: SubscriptionStatus | null | undefined;
