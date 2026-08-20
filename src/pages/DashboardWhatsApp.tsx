@@ -299,7 +299,7 @@ const DashboardWhatsApp = () => {
     }
   };
 
-  if (!subscription.isLoading && !capabilitiesForSubscription(subscription.data?.status).whatsapp) {
+  if (!subscription.isLoading && !capabilitiesForSubscription(subscription.data).whatsapp) {
     return <div className="mx-auto max-w-lg py-16 text-center"><MessageCircle size={36} className="mx-auto text-muted-foreground/50" /><h2 className="mt-4 font-serif text-2xl font-semibold">WhatsApp no plano Pro</h2><p className="mt-2 text-sm text-muted-foreground">Ativa uma assinatura para registar despesas e recibos automaticamente.</p><Button asChild className="mt-5"><Link to="/dashboard/assinatura">Ver planos</Link></Button></div>;
   }
 

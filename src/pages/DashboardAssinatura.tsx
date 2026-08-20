@@ -8,7 +8,7 @@ import PageHeader from "@/components/dashboard/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useFinancialContext } from "@/hooks/useFinancialContext";
 import { useSubscriptionV2 } from "@/hooks/useSubscriptionV2";
-import { capabilitiesForSubscription } from "@/lib/finance/capabilities";
+import { capabilitiesForSubscription, isSubscriptionCurrent } from "@/lib/finance/capabilities";
 
 const OFFERS = [
   { id: "pro", name: "Pro", lookupPrefix: "pro_monthly", features: ["Lançamentos pelo WhatsApp", "Planos ilimitados", "Grupos ilimitados", "Resumo mensal"] },
@@ -33,7 +33,7 @@ export default function DashboardAssinatura() {
   const currency = financial.data?.currency ?? "EUR";
   const current = subscription.data;
   const lifetimeAccess = current?.provider === "complimentary" && current.status === "active" && !current.current_period_end;
-  const capabilities = capabilitiesForSubscription(current?.status);
+  const capabilities = capabilitiesForSubscription(current);
   const returnUrl = useMemo(() => `${window.location.origin}/dashboard/assinatura?session_id={CHECKOUT_SESSION_ID}`, []);
 
   if (subscription.isLoading || financial.isLoading) return <PageState loading message="A carregar a assinatura..." />;
@@ -45,7 +45,7 @@ export default function DashboardAssinatura() {
       <PageHeader eyebrow="Partilhar e automatizar" title="Assinatura" description="Consulta o estado atual e escolhe as funcionalidades adequadas ao teu uso." />
 
       <section className="grid gap-4 border-y border-border py-5 sm:grid-cols-3">
-        <Status label="Estado" value={lifetimeAccess ? "Acesso vitalício" : current ? STATUS_LABELS[current.status] ?? current.status : "Plano gratuito"} />
+        <Status label="Estado" value={lifetimeAccess ? "Acesso vitalício" : current ? (current.status === "trialing" && !isSubscriptionCurrent(current) ? "Período experimental terminado" : STATUS_LABELS[current.status] ?? current.status) : "Plano gratuito"} />
         <Status label="Renovação" value={lifetimeAccess ? "Acesso permanente" : current?.current_period_end ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(current.current_period_end)) : "Sem renovação agendada"} />
         <Status label="Ambiente" value={current?.environment === "live" ? "Produção" : current?.environment ?? "Produção"} />
       </section>

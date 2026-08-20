@@ -74,7 +74,7 @@ const DashboardGrupos = () => {
   const [invitationToRevoke, setInvitationToRevoke] = useState<Invitation | null>(null);
 
   const spaces = useMemo(() => spacesQuery.data ?? [], [spacesQuery.data]);
-  const capabilities = capabilitiesForSubscription(subscription.data?.status);
+  const capabilities = capabilitiesForSubscription(subscription.data);
   const familyLimitReached = !capabilities.unlimitedGroups && spaces.some((space) => space.kind === "family");
   const selectedSpace = spaces.find((space) => space.id === selectedSpaceId) ?? spaces[0];
   const canManage = canManageHousehold(selectedSpace?.role);
