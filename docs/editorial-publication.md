@@ -49,3 +49,40 @@ unchanged and must not be treated as verified by the email availability check.
 
 Existing accounts, real financial entries, subscriptions and WhatsApp sessions
 were not modified. Live login, signup, checkout and WhatsApp remain unverified.
+
+## Published Release
+
+- GitHub PR: https://github.com/Fabriciolimayt/organizzetest/pull/1 (merged).
+- Published main commit: `49a8bd0d82b93675fe9eca0be0ccf54d133b075e`.
+- Frontend tree: `0aef15fa4b088370fca22d1c79704a053f32cf35`, verified identical
+  between the validated local release and the GitHub release.
+- Lovable deployment: `b02004c8-4087-4cca-8ca4-15da0c1995b6`.
+- Public application: https://organizzetest.lovable.app
+
+## Live Smoke Checks
+
+Verified on the public deployment, without signing in or writing user data:
+
+- Landing navigation: Entrar opens `/auth`; Comecar opens `/signup`.
+- `/signup` displays account creation rather than the login form.
+- The app logo and return link lead to the canonical Site.
+- The application root `/` redirects to that same Site, not the legacy landing.
+- The rendered landing contains no localhost or loopback links.
+- Anonymous `/dashboard` navigation returns to `/auth`.
+- The new auth artwork loads; the desktop login presentation is visible.
+- At 375 CSS pixels, the signup form measures 343 pixels with 16-pixel gutters;
+  the document has no horizontal overflow. Browser viewport override was reset.
+- No console errors were captured during the app navigation smoke checks.
+- Public production JavaScript returns HTTP 200 and contains only the business
+  Supabase URL `https://mvnpfnmplnsdfkufghgh.supabase.co`, not the old project.
+
+These checks verify publication, routing and configuration, not a real account
+creation, authenticated financial session, Google OAuth, purchase or WhatsApp
+message delivery. Those flows still need an authorized end-to-end session.
+
+## Existing Security Follow-Up
+
+Supabase advisors returned no ERROR-level findings. Leaked password protection
+is disabled (WARN). RLS-without-policy notices on service-only `app_v2.whatsapp_jobs`
+and legacy `public.expenses` are INFO-level findings. No permissions or security
+settings were relaxed during publication.
