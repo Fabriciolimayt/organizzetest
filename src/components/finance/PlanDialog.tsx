@@ -65,11 +65,11 @@ const PlanDialog = ({ open, onOpenChange, currency, plan, saving = false, onSubm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader className="border-b border-border pb-4">
           <DialogTitle>{plan ? "Editar plano" : "Novo plano"}</DialogTitle>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4 pt-1" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="plan-name">Nome</Label>
             <Input
@@ -91,6 +91,7 @@ const PlanDialog = ({ open, onOpenChange, currency, plan, saving = false, onSubm
               value={values.expectedIncome}
               onChange={(event) => setValues((current) => ({ ...current, expectedIncome: Number(event.target.value) || 0 }))}
               disabled={saving}
+              className="financial-value"
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -116,7 +117,7 @@ const PlanDialog = ({ open, onOpenChange, currency, plan, saving = false, onSubm
             </div>
           </div>
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-          <DialogFooter>
+          <DialogFooter className="border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancelar
             </Button>

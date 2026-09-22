@@ -71,23 +71,32 @@ export default function DashboardOrcamento() {
   if (financial.error || budget.error || transactions.error) return <State message="Não foi possível carregar o orçamento." action={<Button variant="outline" onClick={() => { void financial.refetch(); void budget.refetch(); void transactions.refetch(); }}>Tentar novamente</Button>} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader eyebrow="Planear" title="Orçamento" description="Define o rendimento previsto e distribui cada euro pelas categorias do mês." />
       <MonthSelector month={monthLabel} onPrevious={() => setAnchor((current) => shiftMonth(current, -1, context?.timezone ?? "UTC"))} onNext={() => setAnchor((current) => shiftMonth(current, 1, context?.timezone ?? "UTC"))} />
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid items-start gap-4 lg:grid-cols-[19rem_minmax(0,1fr)]">
         <div className="space-y-4">
-          <DashboardCard title="Plano do mês">
+          <DashboardCard title="Plano do mês" headingLevel={2}>
             <div className="space-y-4">
               <div className="space-y-1.5"><Label htmlFor="budget-name">Nome</Label><Input id="budget-name" value={name} onChange={(event) => setName(event.target.value)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="budget-income">Rendimento previsto ({currency})</Label><Input id="budget-income" inputMode="decimal" value={incomeInput} onChange={(event) => setIncomeInput(event.target.value)} /></div>
-              <div className="grid grid-cols-2 gap-2"><div className="rounded-md bg-muted p-3"><p className="text-xs text-muted-foreground">Gasto</p><p className="font-semibold tabular-nums">{formatCurrency(totalSpent, currency, locale)}</p></div><div className="rounded-md bg-muted p-3"><p className="text-xs text-muted-foreground">Disponível</p><p className="font-semibold tabular-nums">{formatCurrency((Number.isFinite(income) ? income : 0) - totalSpent, currency, locale)}</p></div></div>
+              <div className="space-y-1.5"><Label htmlFor="budget-income">Rendimento previsto ({currency})</Label><Input id="budget-income" inputMode="decimal" value={incomeInput} onChange={(event) => setIncomeInput(event.target.value)} className="financial-value" /></div>
+              <dl aria-label="Resumo do orçamento" className="grid grid-cols-2 divide-x divide-border border-y border-border">
+                <div className="min-w-0 py-3 pr-3">
+                  <dt className="font-mono text-label uppercase text-muted-foreground">Gasto</dt>
+                  <dd className="financial-value mt-1 break-words text-body-small font-semibold text-financial-expense">{formatCurrency(totalSpent, currency, locale)}</dd>
+                </div>
+                <div className="min-w-0 py-3 pl-3">
+                  <dt className="font-mono text-label uppercase text-muted-foreground">Disponível</dt>
+                  <dd className={`financial-value mt-1 break-words text-body-small font-semibold ${(Number.isFinite(income) ? income : 0) - totalSpent < 0 ? "text-financial-expense" : "text-financial-income"}`}>{formatCurrency((Number.isFinite(income) ? income : 0) - totalSpent, currency, locale)}</dd>
+                </div>
+              </dl>
             </div>
           </DashboardCard>
-          <DashboardCard title="Modelos">
-            <div className="grid gap-2"><Button variant="outline" onClick={() => setAllocations(equalAllocations(categories))}>Divisão equilibrada</Button><Button variant="outline" onClick={() => setAllocations(weightedPreset(categories))}>Base 50/30/20</Button></div>
+          <DashboardCard title="Modelos" headingLevel={2}>
+            <div className="grid gap-2"><Button variant="outline" className="justify-start" onClick={() => setAllocations(equalAllocations(categories))}>Divisão equilibrada</Button><Button variant="outline" className="justify-start" onClick={() => setAllocations(weightedPreset(categories))}>Base 50/30/20</Button></div>
           </DashboardCard>
         </div>
-        <DashboardCard title="Divisão por categoria">
+        <DashboardCard title="Divisão por categoria" headingLevel={2} description="Ajusta as percentagens sem alterar o total planeado para o período.">
           <BudgetEditor categories={categories} allocations={allocations} income={Number.isFinite(income) ? income : 0} spentByCategory={spentByCategory} currency={currency} locale={locale} disabled={!context?.canWrite || saveBudget.isPending} onChange={setAllocations} />
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <p className={`text-sm ${validation.valid ? "text-muted-foreground" : "text-destructive"}`}>{validation.valid ? "A divisão soma 100%." : validation.message}</p>

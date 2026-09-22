@@ -7,10 +7,10 @@ type Props = { value: Filters; categories: Array<{ id: string; name: string }>; 
 
 export default function TransactionFilters({ value, categories, onChange }: Props) {
   return (
-    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_160px_180px_150px]">
-      <div className="relative">
+    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_10rem_11rem_10rem]">
+      <div className="relative sm:col-span-2 xl:col-span-1">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input value={value.search} onChange={(event) => onChange({ ...value, search: event.target.value })} placeholder="Pesquisar descrição ou comerciante" className="pl-9" />
+        <Input type="search" aria-label="Pesquisar lançamentos" value={value.search} onChange={(event) => onChange({ ...value, search: event.target.value })} placeholder="Pesquisar descrição ou comerciante" className="pl-9" />
       </div>
       <Select value={value.type} onValueChange={(type) => onChange({ ...value, type: type as Filters["type"] })}>
         <SelectTrigger aria-label="Tipo de lançamento"><SelectValue /></SelectTrigger>

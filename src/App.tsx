@@ -3,11 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { TourProvider } from "@/components/tour/TourProvider";
-import Index from "./pages/Index";
+import PublicHome from "./pages/PublicHome";
 import Auth from "./pages/Auth";
 import OnboardingNome from "./pages/OnboardingNome";
 import OnboardingIdioma from "./pages/OnboardingIdioma";
@@ -16,20 +16,21 @@ import OnboardingWhatsApp from "./pages/OnboardingWhatsApp";
 import OnboardingWhatsAppVerificar from "./pages/OnboardingWhatsAppVerificar";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
-import Dashboard from "./pages/Dashboard";
-import DashboardLancamentos from "./pages/DashboardLancamentos";
-import DashboardRelatorios from "./pages/DashboardRelatorios";
-import DashboardLimiteGastos from "./pages/DashboardLimiteGastos";
-import DashboardOrcamento from "./pages/DashboardOrcamento";
-import DashboardPlanos from "./pages/DashboardPlanos";
-import DashboardObjetivos from "./pages/DashboardObjetivos";
-import DashboardGrupos from "./pages/DashboardGrupos";
-import DashboardWhatsApp from "./pages/DashboardWhatsApp";
-import DashboardDiagnosticoWhatsApp from "./pages/DashboardDiagnosticoWhatsApp";
-import DashboardAssinatura from "./pages/DashboardAssinatura";
 import AcceptInvitation from "./pages/AcceptInvitation";
 
 import OAuthConsent from "./pages/OAuthConsent";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardLancamentos = lazy(() => import("./pages/DashboardLancamentos"));
+const DashboardRelatorios = lazy(() => import("./pages/DashboardRelatorios"));
+const DashboardLimiteGastos = lazy(() => import("./pages/DashboardLimiteGastos"));
+const DashboardOrcamento = lazy(() => import("./pages/DashboardOrcamento"));
+const DashboardPlanos = lazy(() => import("./pages/DashboardPlanos"));
+const DashboardObjetivos = lazy(() => import("./pages/DashboardObjetivos"));
+const DashboardGrupos = lazy(() => import("./pages/DashboardGrupos"));
+const DashboardWhatsApp = lazy(() => import("./pages/DashboardWhatsApp"));
+const DashboardDiagnosticoWhatsApp = lazy(() => import("./pages/DashboardDiagnosticoWhatsApp"));
+const DashboardAssinatura = lazy(() => import("./pages/DashboardAssinatura"));
 
 const queryClient = new QueryClient();
 const PrimitiveShowcase = import.meta.env.DEV
@@ -57,10 +58,10 @@ const App = () => (
                 }
               />
             )}
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<PublicHome />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/signup" element={<Navigate to="/auth" replace />} />
+            <Route path="/auth" element={<Auth key="login" />} />
+            <Route path="/signup" element={<Auth key="signup" initialMode="signup" />} />
             <Route path="/convite" element={<AcceptInvitation />} />
             <Route path="/onboarding/nome" element={<Protected><OnboardingNome /></Protected>} />
             <Route path="/onboarding/idioma" element={<Protected><OnboardingIdioma /></Protected>} />

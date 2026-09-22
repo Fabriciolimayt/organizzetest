@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Receipt, MessageSquare, Calendar, SkipForward, ChevronDown } from "lucide-react";
+import { ChevronDown, MessageCircle, SkipForward } from "lucide-react";
+import AutomationDiagram from "@/components/onboarding/AutomationDiagram";
 import OnboardingWizardLayout from "@/components/onboarding/OnboardingWizardLayout";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseV2 } from "@/integrations/supabase/v2";
@@ -19,12 +20,6 @@ import {
   type WaCountry,
 } from "@/lib/countries";
 
-const features = [
-  { icon: Receipt, title: "Foto de fatura", desc: "OCR automático" },
-  { icon: MessageSquare, title: "Texto rápido", desc: '"Gastei 45€"' },
-  { icon: Calendar, title: "Resumo mensal", desc: "Dia 25" },
-];
-
 const OnboardingWhatsApp = () => {
   const navigate = useNavigate();
   const currency = useMemo(
@@ -37,6 +32,7 @@ const OnboardingWhatsApp = () => {
   const [loading, setLoading] = useState(false);
 
   const valid = validatePhone(country, phone);
+  const phoneInvalid = phone.length > 0 && !valid;
 
   const startVerification = async () => {
     if (!valid || loading) return;
@@ -100,91 +96,68 @@ const OnboardingWhatsApp = () => {
 
   return (
     <OnboardingWizardLayout
-      step={3}
+      step={4}
+      totalSteps={4}
       icon={<MessageCircle size={22} />}
-      title="Conectar WhatsApp"
-      subtitle={
-        <>
-          Envia fotos de recibos e recebe o resumo mensal —{" "}
-          <strong className="text-foreground">automaticamente.</strong>
-        </>
-      }
+      title="Queres ligar o WhatsApp?"
+      subtitle="As despesas que enviares são interpretadas e organizadas no teu mês."
       onBack={() => navigate("/onboarding/moeda")}
       onContinue={startVerification}
       canContinue={valid && !loading}
       continueLabel={loading ? "A preparar ligação..." : "Verificar com WhatsApp"}
       extraFooter={
-        <div className="text-center space-y-1">
+        <div className="text-center">
           <button
+            type="button"
             onClick={skip}
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
+            className="focus-ring interactive-control inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            <SkipForward size={14} /> Saltar por agora
+            <SkipForward size={14} aria-hidden="true" /> Saltar por agora
           </button>
-          <p className="text-xs text-muted-foreground">
-            Opcional — podes conectar mais tarde nas definições
-          </p>
         </div>
       }
     >
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {features.map((f) => {
-          const Icon = f.icon;
-          return (
-            <div key={f.title} className="text-center">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
-                <Icon size={16} />
-              </div>
-              <div className="text-sm font-bold text-foreground">{f.title}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{f.desc}</div>
-            </div>
-          );
-        })}
-      </div>
+      <AutomationDiagram />
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <MessageCircle size={18} />
-          </div>
-          <div>
-            <div className="font-bold text-foreground text-sm">Conectar WhatsApp</div>
-            <div className="text-xs text-muted-foreground">Envia recibos via WhatsApp</div>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-            PAÍS
+      <div className="entry-editorial__phone-fields">
+        <div className="min-w-0">
+          <label htmlFor="whatsapp-country" className="entry-editorial__field-label text-label">
+            País e indicativo
           </label>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
+                id="whatsapp-country"
                 type="button"
-                className="w-full mt-1.5 h-11 px-3 rounded-lg border border-border bg-background flex items-center justify-between text-sm"
+                aria-expanded={open}
+                className="entry-editorial__country focus-ring interactive-control mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-md border border-input bg-card px-3.5 text-sm hover:border-foreground/45 hover:bg-muted"
               >
-                <span className="flex items-center gap-2">
-                  <span className="text-lg leading-none">{country.flag}</span>
-                  <span className="font-medium">{country.name}</span>
-                  <span className="text-muted-foreground">{country.ddi}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="font-mono text-label">{country.code}</span>
+                  <span className="min-w-0 break-words text-left font-medium">{country.name}</span>
                 </span>
-                <ChevronDown size={16} className="text-muted-foreground" />
+                <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
+                  {country.ddi}
+                  <ChevronDown size={16} aria-hidden="true" />
+                </span>
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
+            <PopoverContent className="entry-editorial entry-editorial__countries w-[var(--radix-popover-trigger-width)] p-1" align="start">
               {WA_COUNTRIES.map((c) => (
                 <button
                   key={c.code}
+                  type="button"
                   onClick={() => {
                     setCountry(c);
                     setOpen(false);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-secondary text-left ${
+                  aria-current={c.code === country.code ? "true" : undefined}
+                  className={`focus-ring flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-secondary ${
                     c.code === country.code ? "bg-secondary" : ""
                   }`}
                 >
-                  <span className="text-lg leading-none">{c.flag}</span>
-                  <span className="font-medium flex-1">{c.name}</span>
+                  <span className="font-mono text-label">{c.code}</span>
+                  <span className="min-w-0 flex-1 break-words font-medium">{c.name}</span>
                   <span className="text-muted-foreground">{c.ddi}</span>
                 </button>
               ))}
@@ -192,41 +165,37 @@ const OnboardingWhatsApp = () => {
           </Popover>
         </div>
 
-        <div>
-          <label className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-            NÚMERO WHATSAPP
+        <div className="min-w-0">
+          <label htmlFor="whatsapp-phone" className="entry-editorial__field-label text-label">
+            Número de WhatsApp
           </label>
-          <div className="flex gap-2 mt-1.5">
-            <div className="flex items-center gap-1.5 px-3 rounded-lg border border-border bg-background text-sm font-medium shrink-0">
-              <span>{country.flag}</span>
-              <span>{country.ddi}</span>
+          <div className="mt-2 flex min-w-0 gap-2">
+            <div className="flex min-h-12 shrink-0 items-center rounded-md border border-border bg-muted px-3 text-sm font-medium text-muted-foreground">
+              {country.ddi}
             </div>
-            <input
+            <Input
+              id="whatsapp-phone"
               type="tel"
               inputMode="numeric"
+              autoComplete="tel-national"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
               placeholder={country.placeholder}
               maxLength={18}
-              className="flex-1 h-11 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              aria-invalid={phoneInvalid}
+              aria-describedby={phoneInvalid ? "whatsapp-phone-hint whatsapp-phone-error" : "whatsapp-phone-hint"}
+              className="h-12 min-w-0 flex-1 text-base"
             />
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Número completo:{" "}
-            <span className="font-semibold text-foreground">
-              {country.ddi} {phone || "..."}
-            </span>
+          <p id="whatsapp-phone-hint" className="mt-2 text-xs leading-5 text-muted-foreground">
+            Introduz o número nacional, sem repetir o indicativo.
           </p>
+          {phoneInvalid && (
+            <p id="whatsapp-phone-error" role="alert" className="mt-2 text-body-small text-financial-expense">
+              O número de {country.name} precisa de pelo menos {country.minDigits} dígitos.
+            </p>
+          )}
         </div>
-
-        <Button
-          disabled={!valid || loading}
-          onClick={startVerification}
-          className="w-full gap-2"
-          variant={valid ? "default" : "secondary"}
-        >
-          <MessageCircle size={16} /> {loading ? "A preparar ligação..." : "Verificar com WhatsApp"}
-        </Button>
       </div>
     </OnboardingWizardLayout>
   );

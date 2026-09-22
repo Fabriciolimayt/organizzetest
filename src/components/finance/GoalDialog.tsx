@@ -60,11 +60,11 @@ const GoalDialog = ({ open, onOpenChange, currency, goal, saving = false, onSubm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader className="border-b border-border pb-4">
           <DialogTitle>{goal ? "Editar objetivo" : "Novo objetivo"}</DialogTitle>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4 pt-1" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="goal-name">Objetivo</Label>
             <Input
@@ -87,6 +87,7 @@ const GoalDialog = ({ open, onOpenChange, currency, goal, saving = false, onSubm
                 value={values.targetAmount || ""}
                 onChange={(event) => setValues((current) => ({ ...current, targetAmount: Number(event.target.value) || 0 }))}
                 disabled={saving}
+                className="financial-value"
               />
             </div>
             <div className="space-y-2">
@@ -99,6 +100,7 @@ const GoalDialog = ({ open, onOpenChange, currency, goal, saving = false, onSubm
                 value={values.currentAmount || ""}
                 onChange={(event) => setValues((current) => ({ ...current, currentAmount: Number(event.target.value) || 0 }))}
                 disabled={saving}
+                className="financial-value"
               />
             </div>
           </div>
@@ -113,7 +115,7 @@ const GoalDialog = ({ open, onOpenChange, currency, goal, saving = false, onSubm
             />
           </div>
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-          <DialogFooter>
+          <DialogFooter className="border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancelar
             </Button>

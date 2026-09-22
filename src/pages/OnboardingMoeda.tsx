@@ -5,10 +5,10 @@ import OnboardingWizardLayout from "@/components/onboarding/OnboardingWizardLayo
 import SelectableCard from "@/components/onboarding/SelectableCard";
 
 const currencies = [
-  { code: "EUR", symbol: "€", flag: "🇪🇺", name: "Euro", country: "Portugal, Europa" },
-  { code: "BRL", symbol: "R$", flag: "🇧🇷", name: "Real", country: "Brasil" },
-  { code: "MZN", symbol: "Mt", flag: "🇲🇿", name: "Metical", country: "Moçambique" },
-  { code: "USD", symbol: "$", flag: "🇺🇸", name: "Dólar", country: "Estados Unidos" },
+  { code: "EUR", name: "Euro", example: "1 250,00 €" },
+  { code: "BRL", name: "Real", example: "R$ 1.250,00" },
+  { code: "MZN", name: "Metical", example: "1 250,00 MT" },
+  { code: "USD", name: "Dólar", example: "$1,250.00" },
 ];
 
 const OnboardingMoeda = () => {
@@ -24,15 +24,16 @@ const OnboardingMoeda = () => {
 
   return (
     <OnboardingWizardLayout
-      step={2}
+      step={3}
+      totalSteps={4}
       icon={<Coins size={22} />}
-      title="Qual é a tua moeda?"
-      subtitle="Usada para apresentar todos os valores. Podes mudar mais tarde nas definições."
+      title="Como apresentamos os valores?"
+      subtitle="Esta será a moeda principal do teu espaço financeiro."
       onBack={() => navigate("/onboarding/idioma")}
       onContinue={handleContinue}
       canContinue={!!selected}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex max-w-xl flex-col gap-3">
         {currencies.map((c) => (
           <SelectableCard
             key={c.code}
@@ -40,14 +41,9 @@ const OnboardingMoeda = () => {
             onClick={() => setSelected(c.code)}
             layout="horizontal"
           >
-            <span className="text-2xl">{c.flag}</span>
-            <span className="text-xl font-bold text-primary w-10 text-center">
-              {c.symbol}
-            </span>
-            <div className="flex-1">
-              <div className="font-bold text-foreground">{c.name}</div>
-              <div className="text-xs text-muted-foreground">{c.country}</div>
-            </div>
+            <span className="financial-value w-12 shrink-0 text-xs font-semibold text-primary">{c.code}</span>
+            <span className="min-w-0 flex-1 pr-8 text-sm font-semibold text-foreground">{c.name}</span>
+            <span className="financial-value hidden shrink-0 pr-9 text-xs text-muted-foreground sm:block">{c.example}</span>
           </SelectableCard>
         ))}
       </div>

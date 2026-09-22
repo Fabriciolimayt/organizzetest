@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, MessageCircle, Check, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Copy, Loader2, MessageCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { WA_BOT_NUMBER } from "@/lib/countries";
 import { supabaseV2 } from "@/integrations/supabase/v2";
+import "./auth-paper.css";
 
 type Verification = {
   code: string;
@@ -42,6 +43,7 @@ const OnboardingWhatsAppVerificar = () => {
     if (!verification) return;
     let stop = false;
     let completed = false;
+    let redirectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const tick = async () => {
       if (stop || completed) return;
@@ -72,6 +74,7 @@ const OnboardingWhatsAppVerificar = () => {
               preferences: { day: 25, timezone: "Europe/Lisbon" },
             },
           );
+          if (stop) return;
           if (preferencesError) {
             toast({
               title: "WhatsApp ligado",
@@ -94,7 +97,7 @@ const OnboardingWhatsAppVerificar = () => {
           localStorage.removeItem("organizze.tourCompleted");
           localStorage.removeItem("organizze.waVerification");
           toast({ title: "WhatsApp ligado!" });
-          setTimeout(() => navigate("/dashboard"), 600);
+          redirectTimeout = setTimeout(() => navigate("/dashboard"), 600);
         }
       } catch (error) {
         if (!stop) {
@@ -108,7 +111,11 @@ const OnboardingWhatsAppVerificar = () => {
     };
     tick();
     const id = setInterval(tick, 3000);
-    return () => { stop = true; clearInterval(id); };
+    return () => {
+      stop = true;
+      clearInterval(id);
+      if (redirectTimeout) clearTimeout(redirectTimeout);
+    };
   }, [verification, navigate]);
 
   if (!verification) return null;
@@ -125,82 +132,127 @@ const OnboardingWhatsAppVerificar = () => {
   const waLinkVerify = `https://wa.me/${botNumber}?text=${encodeURIComponent(verification.code)}`;
 
   return (
-    <div className="min-h-screen flex flex-col bg-app-bg">
-      <header className="bg-primary py-4 px-6"><Logo white /></header>
+    <div className="entry-editorial entry-onboarding">
+      <header className="entry-editorial__header">
+        <div className="entry-editorial__header-inner">
+          <Logo white />
+          <span className="entry-editorial__header-note text-label">
+            Ligação segura
+          </span>
+        </div>
+      </header>
 
-      <main className="flex-1 px-6 py-6 max-w-2xl w-full mx-auto pb-12">
+      <div
+        className="entry-editorial__progress"
+        role="progressbar"
+        aria-label="Progresso da configuração"
+        aria-valuemin={1}
+        aria-valuemax={4}
+        aria-valuenow={4}
+        aria-valuetext="Passo 4 de 4, verificação"
+      >
+        <span className="font-mono text-label text-muted-foreground">04 / 04</span>
+        <div className="grid grid-cols-4 gap-1.5" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <span key={index} className="h-0.5 bg-primary" />
+          ))}
+        </div>
+      </div>
+
+      <main className="entry-editorial__main">
         <button
+          type="button"
           onClick={() => navigate("/onboarding/whatsapp")}
-          className="flex items-center gap-1 text-sm text-foreground hover:text-primary mb-6"
+          className="focus-ring interactive-control inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft size={16} /> Trocar número
+          <ArrowLeft size={16} aria-hidden="true" /> Trocar número
         </button>
 
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
-          <MessageCircle size={22} />
-        </div>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2 font-serif">
-          Liga o WhatsApp num passo
-        </h1>
-        <p className="text-muted-foreground mb-6">
-          Envia o código ao número dedicado do Organizze. A ligação é feita pela
-          nossa integração Evolution local.
-        </p>
-
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</span>
-            <h3 className="font-bold text-foreground">Envia o teu código de verificação</h3>
+        <div className="editorial-reveal mt-6">
+          <div className="entry-editorial__icon">
+            <MessageCircle size={21} aria-hidden="true" />
           </div>
-
-          <p className="text-sm text-muted-foreground">
-            Envia esta mensagem para o nosso WhatsApp <strong className="text-foreground">{botDisplay}</strong>:
+          <h1 className="entry-editorial__title">
+            Confirma o teu número.
+          </h1>
+          <p className="entry-editorial__description">
+            Envia o código abaixo para <strong className="font-semibold text-foreground">{botDisplay}</strong>. A confirmação acontece automaticamente.
           </p>
+        </div>
 
-          <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
-            <code className="font-mono text-base font-bold text-primary truncate">{verification.code}</code>
-            <button onClick={() => copy(verification.code, "Código")}
-              className="shrink-0 w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-secondary">
-              {copied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
+        <section aria-labelledby="verification-code-label" className="entry-editorial__verification mt-8 border-y border-border py-6">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="min-w-0">
+              <p id="verification-code-label" className="entry-editorial__field-label text-label">
+                Código de ligação
+              </p>
+              <code className="entry-editorial__code financial-value mt-3 block [overflow-wrap:anywhere] text-xl font-semibold sm:text-2xl">
+                {verification.code}
+              </code>
+            </div>
+            <button
+              type="button"
+              onClick={() => copy(verification.code, "Código")}
+              className="focus-ring interactive-control inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground hover:border-foreground/45 hover:bg-muted sm:self-auto"
+              aria-label={copied ? "Código copiado" : "Copiar código"}
+            >
+              {copied ? <Check size={16} className="text-primary" aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+              {copied ? "Copiado" : "Copiar"}
             </button>
           </div>
 
-          <a href={expired ? undefined : waLinkVerify} target="_blank" rel="noopener noreferrer">
-            <Button disabled={expired} className="w-full gap-2 h-12 text-base font-semibold">
-              <MessageCircle size={18} /> Abrir WhatsApp com o código
-            </Button>
-          </a>
-          <p className="text-xs text-muted-foreground text-center">
-            Vamos detetar a tua mensagem automaticamente.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center py-2">
           {expired ? (
-            <span>Este código expirou.</span>
-          ) : verifying ? (
-            <><Loader2 size={14} className="animate-spin" /> À espera da tua mensagem...</>
+            <Button disabled size="lg" className="mt-6 w-full sm:w-auto">
+              <MessageCircle size={18} aria-hidden="true" /> Abrir WhatsApp com o código
+            </Button>
           ) : (
-            <><Check size={14} className="text-primary" /> Verificado!</>
+            <Button asChild size="lg" className="mt-6 w-full sm:w-auto">
+              <a href={waLinkVerify} target="_blank" rel="noopener noreferrer">
+                <MessageCircle size={18} aria-hidden="true" /> Abrir WhatsApp com o código
+              </a>
+            </Button>
+          )}
+        </section>
+
+        <div
+          className={`entry-editorial__status mt-6 flex min-h-14 items-center gap-3 border-l-2 px-4 text-sm ${
+            expired ? "border-financial-warning text-foreground" : "border-primary text-muted-foreground"
+          }`}
+          role={expired ? "alert" : "status"}
+          aria-live={expired ? "assertive" : "polite"}
+        >
+          {expired ? (
+            <><AlertTriangle size={17} className="shrink-0 text-financial-warning" aria-hidden="true" /><span>Este código expirou. Cria uma nova ligação para continuar.</span></>
+          ) : verifying ? (
+            <><Loader2 size={17} className="shrink-0 animate-spin text-primary" aria-hidden="true" /> À espera da tua mensagem...</>
+          ) : (
+            <><Check size={17} className="shrink-0 text-primary" aria-hidden="true" /> Número verificado.</>
           )}
         </div>
 
         {expired && (
           <Button
             variant="outline"
-            className="w-full"
+            size="lg"
+            className="mt-4 w-full sm:w-auto"
             onClick={() => navigate("/onboarding/whatsapp", { replace: true })}
           >
             Recomeçar ligação
           </Button>
         )}
+      </main>
 
-        <div className="text-center mt-4">
-          <button onClick={() => navigate("/dashboard")} className="text-xs text-muted-foreground hover:underline">
+      <footer className="entry-editorial__footer">
+        <div className="entry-editorial__footer-inner flex justify-center">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="focus-ring interactive-control min-h-11 rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
             Saltar e ligar mais tarde
           </button>
         </div>
-      </main>
+      </footer>
     </div>
   );
 };

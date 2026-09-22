@@ -1,6 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import TourOverlay, { TourStep } from "@/components/dashboard/TourOverlay";
+import type { TourStep } from "@/components/dashboard/TourOverlay";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export interface GlobalTourStep extends TourStep {
   /** Route to navigate to before showing this step. */
@@ -18,20 +30,29 @@ export const useTour = () => useContext(Ctx);
 
 const COMPLETED_KEY = "organizze.tourCompleted";
 const FIRSTRUN_KEY = "organizze.firstRun";
+const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
 
 export const GLOBAL_TOUR_STEPS: GlobalTourStep[] = [
-  { emoji: "👋", title: "Bem-vindo ao Moedas!", body: "Vou mostrar-te tudo num minuto. Podes saltar a qualquer momento.", route: "/dashboard" },
-  { emoji: "💰", title: "Rendimento", body: "Define aqui quanto recebes — é a base do orçamento.", target: '[data-tour="salario"]', route: "/dashboard" },
-  { emoji: "📊", title: "Categorias", body: "Distribui o teu dinheiro em percentagens.", target: '[data-tour="orcamento"]', route: "/dashboard" },
-  { emoji: "📋", title: "Despesas", body: "Adiciona despesas fixas e vê-as atualizar em tempo real.", target: '[data-tour="despesas"]', route: "/dashboard" },
-  { emoji: "🔀", title: "Planos", body: "Tens vários cenários? Alterna num clique.", target: '[data-tour="planos"]', route: "/dashboard" },
-  { emoji: "📝", title: "Lançamentos", body: "Aqui registas e consultas cada movimento.", route: "/dashboard/lancamentos" },
-  { emoji: "📈", title: "Relatórios", body: "Vê para onde o teu dinheiro vai com gráficos claros.", route: "/dashboard/relatorios" },
-  { emoji: "🎯", title: "Orçamento", body: "Define e ajusta as percentagens por categoria.", route: "/dashboard/orcamento" },
-  { emoji: "🚦", title: "Limite de gastos", body: "Define limites e recebe alertas antes de gastares a mais.", route: "/dashboard/limite-de-gastos" },
-  { emoji: "👥", title: "Grupos", body: "Partilha o orçamento com a família ou parceiro.", route: "/dashboard/grupos" },
-  { emoji: "📱", title: "WhatsApp", body: "Liga o WhatsApp e regista despesas só com uma foto.", route: "/dashboard/whatsapp" },
-  { emoji: "❓", title: "Ajuda sempre à mão", body: "Carrega no botão de ajuda para repetir este tour quando quiseres.", route: "/dashboard" },
+  { title: "Bem-vindo ao Organizze", body: "Vou mostrar-te tudo num minuto. Podes saltar a qualquer momento.", route: "/dashboard" },
+  { title: "Rendimento", body: "Define aqui quanto recebes. É a base do orçamento.", target: '[data-tour="salario"]', route: "/dashboard" },
+  { title: "Categorias", body: "Distribui o teu dinheiro em percentagens.", target: '[data-tour="orcamento"]', route: "/dashboard" },
+  { title: "Despesas", body: "Adiciona despesas fixas e vê-as atualizar em tempo real.", target: '[data-tour="despesas"]', route: "/dashboard" },
+  { title: "Planos", body: "Tens vários cenários? Alterna num clique.", target: '[data-tour="planos"]', route: "/dashboard" },
+  { title: "Lançamentos", body: "Aqui registas e consultas cada movimento.", route: "/dashboard/lancamentos" },
+  { title: "Relatórios", body: "Vê para onde o teu dinheiro vai com gráficos claros.", route: "/dashboard/relatorios" },
+  { title: "Orçamento", body: "Define e ajusta as percentagens por categoria.", route: "/dashboard/orcamento" },
+  { title: "Limite de gastos", body: "Define limites e recebe alertas antes de gastares a mais.", route: "/dashboard/limite-de-gastos" },
+  { title: "Grupos", body: "Partilha o orçamento com a família ou parceiro.", route: "/dashboard/grupos" },
+  { title: "WhatsApp", body: "Liga o WhatsApp e regista despesas só com uma foto.", route: "/dashboard/whatsapp" },
+  { title: "Ajuda sempre à mão", body: "Carrega no botão de ajuda para repetir este tour quando quiseres.", route: "/dashboard" },
 ];
 
 export const TourProvider = ({ children }: { children: React.ReactNode }) => {
@@ -132,8 +153,8 @@ const TourRunner = ({ onClose, onComplete }: { onClose: () => void; onComplete: 
 
   if (!readyStep) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center">
-        <div className="bg-card rounded-xl px-4 py-3 text-sm border border-border shadow-lg">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4">
+        <div className="rounded-md border border-border bg-card px-5 py-4 text-sm text-muted-foreground shadow-menu" role="status">
           A preparar o tour…
         </div>
       </div>
@@ -156,10 +177,6 @@ const TourRunner = ({ onClose, onComplete }: { onClose: () => void; onComplete: 
 };
 
 // Lightweight inline overlay (kept similar to TourOverlay) so we can drive prev/next from provider
-import { useLayoutEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-
 const SingleStepOverlay = ({
   step, index, total, onPrev, onNext, onClose,
 }: {
@@ -167,14 +184,64 @@ const SingleStepOverlay = ({
   onPrev: () => void; onNext: () => void; onClose: () => void;
 }) => {
   const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const descriptionId = useId();
   const padding = 8;
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+
+    const focusFrame = requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        .filter((element) => element.getAttribute("aria-hidden") !== "true" && !element.hasAttribute("hidden"));
+      const first = focusable[0];
+      const last = focusable.at(-1);
+
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [onClose]);
 
   useLayoutEffect(() => {
     const measure = () => {
       if (!step.target) { setRect(null); return; }
       const el = document.querySelector(step.target) as HTMLElement | null;
       if (!el) { setRect(null); return; }
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
       requestAnimationFrame(() => {
         const r = el.getBoundingClientRect();
         setRect({ top: r.top - padding, left: r.left - padding, width: r.width + padding * 2, height: r.height + padding * 2 });
@@ -206,41 +273,62 @@ const SingleStepOverlay = ({
   const isFirst = index === 0, isLast = index === total - 1;
 
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-[100]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      tabIndex={-1}
+    >
       {rect ? (
         <>
-          <div className="fixed bg-black/60" style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top) }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }} />
-          <div className="fixed rounded-xl ring-4 ring-primary pointer-events-none transition-all"
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top) }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }} />
+          <div aria-hidden="true" className="pointer-events-none fixed rounded-md ring-2 ring-intelligence"
             style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height, boxShadow: "0 0 0 2px hsl(var(--background)) inset" }} />
         </>
       ) : (
-        <div className="fixed inset-0 bg-black/60" />
+        <div aria-hidden="true" className="fixed inset-0 bg-black/70" />
       )}
 
-      <div className="fixed bg-card rounded-xl shadow-2xl border border-border p-5 animate-in fade-in zoom-in-95" style={popStyle}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-primary">{index + 1} / {total}</span>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Fechar tour"><X size={16} /></button>
+      <div className="fixed rounded-md border border-border bg-card p-5 shadow-menu animate-in fade-in duration-200" style={popStyle}>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <span className="financial-value text-label font-semibold text-intelligence">Etapa {index + 1} de {total}</span>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className="focus-ring interactive-control flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Fechar tour"
+          >
+            <X aria-hidden="true" size={16} />
+          </button>
         </div>
-        <h3 className="text-base font-bold text-foreground mb-1.5 flex items-center gap-2">
-          {step.emoji && <span>{step.emoji}</span>}{step.title}
-        </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{step.body}</p>
-        <div className="flex items-center justify-center gap-1.5 mb-4">
+        <h3 id={titleId} className="text-base font-semibold text-foreground">{step.title}</h3>
+        <p id={descriptionId} className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+        <div
+          aria-label={`Progresso do tour: etapa ${index + 1} de ${total}`}
+          className="my-5 flex items-center gap-1.5"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={total}
+          aria-valuenow={index + 1}
+        >
           {Array.from({ length: total }).map((_, i) => (
-            <span key={i} className={`h-1.5 rounded-full transition-all ${i === index ? "w-5 bg-primary" : "w-1.5 bg-muted"}`} />
+            <span key={i} aria-hidden="true" className={`h-0.5 flex-1 ${i <= index ? "bg-intelligence" : "bg-muted"}`} />
           ))}
         </div>
         <div className="flex items-center justify-between gap-3">
-          <button onClick={onPrev} disabled={isFirst}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 flex items-center gap-1">
-            <ChevronLeft size={14} /> Anterior
+          <button type="button" onClick={onPrev} disabled={isFirst}
+            className="focus-ring interactive-control flex min-h-11 items-center gap-1 rounded-md px-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30">
+            <ChevronLeft aria-hidden="true" size={14} /> Anterior
           </button>
-          <Button size="sm" onClick={onNext} className="gap-1.5 rounded-full px-4">
-            {isLast ? <>Feito! 🎉</> : isFirst ? <>Vamos lá <ChevronRight size={14} /></> : <>Seguinte <ChevronRight size={14} /></>}
+          <Button size="sm" onClick={onNext} className="gap-1.5 px-4">
+            {isLast ? <>Concluir</> : isFirst ? <>Começar <ChevronRight aria-hidden="true" size={14} /></> : <>Seguinte <ChevronRight aria-hidden="true" size={14} /></>}
           </Button>
         </div>
       </div>

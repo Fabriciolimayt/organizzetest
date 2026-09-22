@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Camera, MessageCircle, Send, Calendar, CheckCircle2, Loader2 } from "lucide-react";
+import {
+  Camera,
+  Send,
+  CheckCircle2,
+  Loader2,
+  Wifi,
+  WifiOff,
+  Receipt,
+  MessageSquare,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/dashboard/PageHeader";
 import { Input } from "@/components/ui/input";
@@ -8,10 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { supabaseV2 } from "@/integrations/supabase/v2";
 import { fileToCompressedBase64 } from "@/lib/whatsapp";
 import { WA_BOT_NUMBER } from "@/lib/countries";
-import { toast } from "@/hooks/use-toast";
 import { useFinancialContext } from "@/hooks/useFinancialContext";
 import { useSubscriptionV2 } from "@/hooks/useSubscriptionV2";
 import { capabilitiesForSubscription } from "@/lib/finance/capabilities";
+import { useAuth } from "@/hooks/useAuth";
 
 type Bubble = {
   id: string;
@@ -65,11 +75,17 @@ const readBubbles = (): Bubble[] => {
 };
 
 const seedBubbles = (currency: string): Bubble[] => ([
-  { id: "1", from: "bot", kind: "text", ts: Date.now() - 60000,
-    text: "✅ WhatsApp verificado!\n\nPodes agora:\n📸 Enviar fotos de recibos — cada item registado automaticamente\n✍️ Escrever uma despesa — ex: \"Gastei 45" + (currency === "BRL" ? "R$" : currency === "MZN" ? "Mt" : currency === "USD" ? "$" : "€") + "\"\n\nNo dia 25 de cada mês recebes aqui o teu resumo." },
+  {
+    id: "1",
+    from: "bot",
+    kind: "text",
+    ts: Date.now() - 60000,
+    text: "WhatsApp conectado e verificado.\n\nPodes agora:\nEnviar fotos de recibos: cada item é registado automaticamente com IA.\nEscrever uma despesa, por exemplo: \"Gastei 45" + (currency === "BRL" ? "R$" : currency === "MZN" ? "Mt" : currency === "USD" ? "$" : "€") + " no supermercado\".\n\nNo dia 25 de cada mês recebes aqui o teu resumo inteligente.",
+  },
 ]);
 
 const DashboardWhatsApp = () => {
+  const { user } = useAuth();
   const financial = useFinancialContext();
   const subscription = useSubscriptionV2();
   const locallyVerified = (() => {
@@ -87,352 +103,375 @@ const DashboardWhatsApp = () => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const historyEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    void (async () => {
+      const { data } = await supabaseV2
+        .from("whatsapp_connections")
+        .select("id, status")
+        .eq("linked_user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (data) setVerified(true);
+    })();
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE, JSON.stringify(bubbles));
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    historyEndRef.current?.scrollIntoView({
+      block: "end",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
   }, [bubbles]);
 
   const resolveFinancialContext = useCallback(async (): Promise<FinancialContext> => {
     const context = financial.data;
     if (!context?.canWrite) throw new Error("Não tens um espaço ativo com permissão para registar despesas.");
+    const expenseCategories = (context.categories ?? [])
+      .filter((category) => category.transaction_type === "expense")
+      .map((c) => ({ id: c.id, name: c.name }));
+
     return {
       userId: context.userId,
       spaceId: context.spaceId,
       currency: context.currency,
-      categories: context.categories.filter((category) => category.transaction_type === "expense").map(({ id, name }) => ({ id, name })),
+      categories: expenseCategories,
     };
   }, [financial.data]);
 
-  useEffect(() => {
-    let active = true;
+  const recordExpense = useCallback(
+    async (item: ExpenseItem, occurredAt?: string) => {
+      const ctx = await resolveFinancialContext();
+      const targetCategory = item.category?.trim() ? CATEGORY_ALIASES[normalizedName(item.category)] || item.category : "Geral";
+      let categoryId = ctx.categories.find((c) => normalizedName(c.name) === normalizedName(targetCategory))?.id;
 
-    const loadConnection = async () => {
-      try {
-        const context = await resolveFinancialContext();
-        if (!active) return;
-        setCurrency(context.currency);
-
-        const { data, error } = await supabaseV2
-          .from("whatsapp_connections")
+      if (!categoryId) {
+        const { data: created, error } = await supabaseV2
+          .from("categories")
+          .insert({
+            space_id: ctx.spaceId,
+            name: targetCategory,
+            transaction_type: "expense",
+          })
           .select("id")
-          .eq("space_id", context.spaceId)
-          .eq("linked_user_id", context.userId)
-          .eq("status", "active")
-          .not("verified_at", "is", null)
-          .limit(1)
-          .maybeSingle();
+          .single();
         if (error) throw error;
-        if (active) setVerified(Boolean(data));
-      } catch {
-        // The local marker keeps the initial UX usable while the V2 connection check is unavailable.
+        categoryId = created.id;
       }
-    };
 
-    void loadConnection();
-    return () => { active = false; };
-  }, [resolveFinancialContext]);
-
-  const push = (b: Omit<Bubble, "id" | "ts">) =>
-    setBubbles((p) => [...p, { ...b, id: crypto.randomUUID(), ts: Date.now() }]);
-
-  const replaceLoading = (loadingId: string, b: Omit<Bubble, "id" | "ts">) =>
-    setBubbles((p) => p.map((x) => x.id === loadingId ? { ...x, ...b, id: loadingId, ts: x.ts } : x));
-
-  const pushLoading = (text: string) => {
-    const id = crypto.randomUUID();
-    setBubbles((p) => [...p, { id, from: "bot", kind: "loading", text, ts: Date.now() }]);
-    return id;
-  };
-
-  const resolveCategoryId = (category: string, context: FinancialContext) => {
-    const canonical = CATEGORY_ALIASES[normalizedName(category)] ?? category;
-    const desired = normalizedName(canonical);
-    const exact = context.categories.find((item) => normalizedName(item.name) === desired);
-    const fallback = context.categories.find((item) => normalizedName(item.name) === "outros");
-    const resolved = exact ?? fallback;
-    if (!resolved) throw new Error("A categoria Outros não está disponível neste espaço.");
-    return resolved.id;
-  };
-
-  const persistExpenses = async (
-    items: ExpenseItem[],
-    context: FinancialContext,
-    merchant?: string | null,
-    occurredAt?: unknown,
-  ) => {
-    const transactions = items
-      .map((item) => ({ ...item, amount: Number(item.amount) }))
-      .filter((item) => Number.isFinite(item.amount) && item.amount > 0)
-      .map((item) => ({
-        space_id: context.spaceId,
-        created_by: context.userId,
-        category_id: resolveCategoryId(item.category || "Outros", context),
-        transaction_type: "expense" as const,
-        source: "app" as const,
-        status: "cleared" as const,
+      const { error } = await supabaseV2.from("transactions").insert({
+        space_id: ctx.spaceId,
+        created_by: ctx.userId,
+        category_id: categoryId,
         amount: item.amount,
-        currency: context.currency,
-        description: item.name || "Despesa",
-        merchant: merchant?.trim() || null,
+        currency: ctx.currency,
+        description: item.name,
+        transaction_type: "expense",
+        source: "app",
+        status: "cleared",
         occurred_at: validOccurredAt(occurredAt),
-      }));
-    if (!transactions.length) throw new Error("Não foi encontrado um valor válido para registar.");
-
-    const { error } = await supabaseV2.from("transactions").insert(transactions);
-    if (error) throw error;
-  };
+      });
+      if (error) throw error;
+    },
+    [resolveFinancialContext],
+  );
 
   const handlePhoto = async (file: File) => {
-    if (busy) return;
+    const tempUrl = URL.createObjectURL(file);
+    const userBubble: Bubble = { id: String(Date.now()), from: "user", kind: "image", imageUrl: tempUrl, ts: Date.now() };
+    const loadingBubble: Bubble = { id: String(Date.now() + 1), from: "bot", kind: "loading", text: "A analisar recibo com IA...", ts: Date.now() };
+    setBubbles((b) => [...b, userBubble, loadingBubble]);
     setBusy(true);
+
     try {
-      const context = await resolveFinancialContext();
-      setCurrency(context.currency);
-      const dataUrl = await fileToCompressedBase64(file);
-      push({ from: "user", kind: "image", imageUrl: dataUrl });
-      const loadingId = pushLoading("🧾 Recibo recebido! A extrair os itens...");
-      const { data, error } = await supabase.functions.invoke("parse-receipt", {
-        body: { imageBase64: dataUrl, currency: context.currency },
+      const base64 = await fileToCompressedBase64(file);
+      const { data, error } = await supabase.functions.invoke("process-receipt-v2", {
+        body: { image_base64: base64, mime_type: file.type || "image/jpeg" },
       });
-      if (error || !data || data.error) throw new Error(data?.error || error?.message || "Falhou");
-      const items: ExpenseItem[] = Array.isArray(data.items)
-        ? data.items.map((item: unknown) => {
-            const candidate = item as Partial<ExpenseItem>;
-            return {
-              name: typeof candidate.name === "string" ? candidate.name : "Despesa",
-              amount: Number(candidate.amount),
-              category: typeof candidate.category === "string" ? candidate.category : "Outros",
-            };
-          }).filter((item: ExpenseItem) => Number.isFinite(item.amount) && item.amount > 0)
-        : [];
-      const total = Number(data.total) > 0
-        ? Number(data.total)
-        : items.reduce((sum, item) => sum + item.amount, 0);
-      if (!items.length) {
-        replaceLoading(loadingId, { from: "bot", kind: "text", text: "Não consegui ler nenhum item neste recibo. Tenta outra foto?" });
-      } else {
-        await persistExpenses(items, context, typeof data.merchant === "string" ? data.merchant : null, data.date);
-        replaceLoading(loadingId, { from: "bot", kind: "items", items, total, currency: context.currency });
+      if (error) throw error;
+
+      const items = (data?.items || []) as ExpenseItem[];
+      const receiptDate = data?.date;
+      for (const item of items) {
+        await recordExpense(item, receiptDate);
       }
-    } catch (error: unknown) {
-      toast({ title: "Erro ao processar recibo", description: errorMessage(error), variant: "destructive" });
-      push({ from: "bot", kind: "text", text: "❌ Não consegui processar — tenta novamente." });
+
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        {
+          id: String(Date.now()),
+          from: "bot",
+          kind: "items",
+          items,
+          total: items.reduce((s, it) => s + Number(it.amount), 0),
+          ts: Date.now(),
+        },
+      ]);
+    } catch (err) {
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        { id: String(Date.now()), from: "bot", kind: "text", text: `Erro: ${errorMessage(err)}`, ts: Date.now() },
+      ]);
     } finally {
       setBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
   const handleText = async () => {
-    const t = text.trim();
-    if (!t || busy) return;
+    const raw = text.trim();
+    if (!raw || busy) return;
     setText("");
-    push({ from: "user", kind: "text", text: t });
+    const userBubble: Bubble = { id: String(Date.now()), from: "user", kind: "text", text: raw, ts: Date.now() };
+    const loadingBubble: Bubble = { id: String(Date.now() + 1), from: "bot", kind: "loading", text: "A registar despesa...", ts: Date.now() };
+    setBubbles((b) => [...b, userBubble, loadingBubble]);
     setBusy(true);
-    const loadingId = pushLoading("A registar...");
+
     try {
-      const context = await resolveFinancialContext();
-      setCurrency(context.currency);
-      const { data, error } = await supabase.functions.invoke("parse-expense-text", {
-        body: { text: t, currency: context.currency },
-      });
-      if (error || !data || data.error) throw new Error(data?.error || error?.message || "Falhou");
-      const amount = Number(data.amount);
-      if (!amount) {
-        replaceLoading(loadingId, { from: "bot", kind: "text", text: "Não percebi o valor. Tenta algo como \"Gastei 45" + sym + " no mercado\"." });
-        return;
-      }
-      const item = { name: data.description || "Despesa", amount, category: data.category || "Outros" };
-      await persistExpenses([item], context, typeof data.merchant === "string" ? data.merchant : null);
-      replaceLoading(loadingId, { from: "bot", kind: "items", items: [item], total: amount, currency: context.currency });
-    } catch (error: unknown) {
-      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
-      replaceLoading(loadingId, { from: "bot", kind: "text", text: "❌ Não consegui processar." });
+      const match = raw.match(/(\d+(?:[.,]\d+)?)/);
+      const amount = match ? parseFloat(match[1].replace(",", ".")) : 10;
+      const name = raw.replace(/\d+(?:[.,]\d+)?\s*(?:€|\$|R\$|Mt)?/i, "").trim() || "Despesa rápida";
+      await recordExpense({ name, amount, category: "Geral" });
+
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        {
+          id: String(Date.now()),
+          from: "bot",
+          kind: "items",
+          items: [{ name, amount, category: "Geral" }],
+          total: amount,
+          ts: Date.now(),
+        },
+      ]);
+    } catch (err) {
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        { id: String(Date.now()), from: "bot", kind: "text", text: `Erro: ${errorMessage(err)}`, ts: Date.now() },
+      ]);
     } finally {
       setBusy(false);
     }
   };
 
   const handleSummary = async () => {
-    if (busy) return;
+    const loadingBubble: Bubble = { id: String(Date.now()), from: "bot", kind: "loading", text: "A calcular o resumo do mês...", ts: Date.now() };
+    setBubbles((b) => [...b, loadingBubble]);
     setBusy(true);
-    const loadingId = pushLoading("📅 A preparar o teu resumo mensal...");
+
     try {
-      const context = await resolveFinancialContext();
-      setCurrency(context.currency);
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-      const { data: transactions, error } = await supabaseV2
+      const ctx = await resolveFinancialContext();
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { data: txs, error } = await supabaseV2
         .from("transactions")
-        .select("amount, category_id")
-        .eq("space_id", context.spaceId)
-        .eq("transaction_type", "expense")
-        .is("deleted_at", null)
-        .gte("occurred_at", monthStart)
-        .lt("occurred_at", nextMonth);
+        .select("amount, category_id, transaction_type")
+        .eq("space_id", ctx.spaceId)
+        .gte("occurred_at", startOfMonth)
+        .neq("status", "void");
       if (error) throw error;
 
-      const categoryNames = new Map(context.categories.map((category) => [category.id, category.name]));
-      const totals = new Map<string, number>();
-      for (const transaction of transactions ?? []) {
-        const name = transaction.category_id ? categoryNames.get(transaction.category_id) ?? "Outros" : "Outros";
-        totals.set(name, (totals.get(name) ?? 0) + Number(transaction.amount));
-      }
-      const formatter = new Intl.NumberFormat("pt-PT", { style: "currency", currency: context.currency });
-      const total = [...totals.values()].reduce((sum, amount) => sum + amount, 0);
-      const categories = [...totals.entries()]
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-PT"))
-        .map(([name, amount]) => `${name}: ${formatter.format(amount)}`);
-      const month = now.toLocaleString("pt-PT", { month: "long", year: "numeric" });
-      const summary = transactions?.length
-        ? `${month}\n${transactions.length} ${transactions.length === 1 ? "despesa" : "despesas"} · ${formatter.format(total)}\n\n${categories.join("\n")}`
-        : `${month}\nAinda não há despesas registadas neste mês.`;
-      replaceLoading(loadingId, { from: "bot", kind: "summary", text: summary });
-    } catch (error: unknown) {
-      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
-      replaceLoading(loadingId, { from: "bot", kind: "text", text: "❌ Não consegui gerar o resumo." });
+      const total = (txs || []).reduce((s, t) => s + (t.transaction_type === "expense" ? Number(t.amount) : 0), 0);
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        {
+          id: String(Date.now()),
+          from: "bot",
+          kind: "summary",
+          text: `Resumo até agora:\nTotal gasto este mês: ${sym}${total.toFixed(2)}\nLançamentos analisados: ${(txs || []).length}`,
+          ts: Date.now(),
+        },
+      ]);
+    } catch (err) {
+      setBubbles((b) => [
+        ...b.filter((x) => x.kind !== "loading"),
+        { id: String(Date.now()), from: "bot", kind: "text", text: `Erro: ${errorMessage(err)}`, ts: Date.now() },
+      ]);
     } finally {
       setBusy(false);
     }
   };
 
   if (!subscription.isLoading && !capabilitiesForSubscription(subscription.data).whatsapp) {
-    return <div className="mx-auto max-w-lg py-16 text-center"><MessageCircle size={36} className="mx-auto text-muted-foreground/50" /><h2 className="mt-4 font-serif text-2xl font-semibold">WhatsApp no plano Pro</h2><p className="mt-2 text-sm text-muted-foreground">Ativa uma assinatura para registar despesas e recibos automaticamente.</p><Button asChild className="mt-5"><Link to="/dashboard/assinatura">Ver planos</Link></Button></div>;
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <PageHeader
+          eyebrow="Partilhar e automatizar"
+          title="Automação WhatsApp"
+          description="Regista despesas por mensagem ou foto de recibo."
+        />
+        <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <WifiOff size={20} className="text-muted-foreground" />
+            <p className="text-sm font-medium">Funcionalidade indisponível no plano atual</p>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A automação via WhatsApp está disponível nos planos Pro e Premium Elite. Faz upgrade para registar
+            despesas por mensagem, foto de recibo, e receber o resumo mensal automático.
+          </p>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/dashboard/assinatura">
+              Ver planos <ArrowRight size={14} />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (!verified) {
     return (
-      <div className="space-y-4">
-        <PageHeader eyebrow="Partilhar e automatizar" title="WhatsApp" description="Regista despesas por mensagem e envia fotos de recibos para processamento automático." />
-        <div className="mx-auto max-w-md space-y-4 py-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center">
-          <MessageCircle size={26} />
-        </div>
-        <h2 className="font-serif text-2xl font-semibold">Liga o teu WhatsApp</h2>
-        <p className="text-sm text-muted-foreground">
-          Regista despesas por mensagem e envia fotos de recibos para que sejam processadas automaticamente.
-        </p>
-        <Link to="/onboarding/whatsapp">
-          <Button className="gap-2"><MessageCircle size={16} /> Conectar WhatsApp</Button>
-        </Link>
+      <div className="space-y-6 max-w-2xl">
+        <PageHeader
+          eyebrow="Partilhar e automatizar"
+          title="Automação WhatsApp"
+          description="Regista despesas por mensagem ou foto de recibo."
+        />
+        <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <WifiOff size={20} className="text-muted-foreground" />
+            <p className="text-sm font-medium">WhatsApp não ligado</p>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Liga o teu número de WhatsApp para começar a registar despesas automaticamente. O processo demora menos de
+            dois minutos.
+          </p>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/onboarding/whatsapp">
+              Ligar WhatsApp <ArrowRight size={14} />
+            </Link>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-180px)] min-h-[500px] rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
-      {/* Chat header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
-        <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center font-bold">
-          💰
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold leading-tight truncate">Moedas Bot</div>
-          <div className="text-xs opacity-90 flex items-center gap-1">
-            <CheckCircle2 size={11} /> +{WA_BOT_NUMBER}
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        eyebrow="Partilhar e automatizar"
+        title="Automação WhatsApp"
+        description="Testa o registo automático e acompanha cada resultado antes de o consultar no dashboard."
+        actions={
+          <div className="flex min-h-10 items-center gap-2 text-body-small font-semibold text-financial-income">
+            <Wifi size={15} aria-hidden="true" />
+            WhatsApp ligado
           </div>
-        </div>
-        <Button size="sm" variant="secondary" onClick={handleSummary} disabled={busy} className="gap-1.5 h-8">
-          <Calendar size={14} /> Resumo
-        </Button>
-      </header>
+        }
+      />
 
-      {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a]/5"
-        style={{ backgroundImage: "radial-gradient(circle at 25% 25%, hsl(var(--muted)) 1px, transparent 1px)", backgroundSize: "16px 16px" }}
-      >
-        {bubbles.map((b) => (
-          <div key={b.id} className={`flex ${b.from === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-              b.from === "user"
-                ? "bg-primary text-primary-foreground rounded-br-sm"
-                : "bg-card border border-border rounded-bl-sm"
-            }`}>
-              {b.kind === "image" && b.imageUrl && (
-                <img src={b.imageUrl} alt="recibo" className="rounded-lg max-h-64 object-cover" />
-              )}
-              {b.kind === "loading" && (
-                <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {b.text}</div>
-              )}
-              {b.kind === "text" && (
-                <p className="whitespace-pre-wrap leading-relaxed">{b.text}</p>
-              )}
-              {b.kind === "summary" && (
-                <div>
-                  <div className="font-semibold mb-1 flex items-center gap-1.5"><Calendar size={14} /> Resumo do mês</div>
-                  <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{b.text}</p>
-                </div>
-              )}
-              {b.kind === "items" && (
-                <div className="space-y-1.5">
-                  <div className="font-semibold">✅ {b.items!.length} {b.items!.length === 1 ? "item registado" : "itens registados"}!</div>
-                  <ul className="space-y-0.5 text-[13px]">
-                    {b.items!.map((it, i) => (
-                      <li key={i} className="flex justify-between gap-3">
-                        <span className="truncate">• {it.name} <span className="text-muted-foreground">· {it.category}</span></span>
-                        <span className="font-medium tabular-nums">{sym}{Number(it.amount).toFixed(2)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {b.total != null && (
-                    <div className="pt-1.5 border-t border-border flex justify-between font-semibold">
-                      <span>💰 Total</span>
-                      <span className="tabular-nums">{sym}{Number(b.total).toFixed(2)}</span>
-                    </div>
-                  )}
-                  <Link to="/dashboard" className="block text-xs text-primary hover:underline pt-1">
-                    Ver no dashboard →
-                  </Link>
-                </div>
-              )}
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)]">
+        <section className="functional-panel min-w-0" aria-labelledby="whatsapp-test-title">
+          <header className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+            <div className="min-w-0">
+              <p className="font-mono text-label uppercase text-muted-foreground">Ferramenta autenticada</p>
+              <h2 id="whatsapp-test-title" className="mt-1 text-panel-title text-foreground">Registo de teste</h2>
             </div>
-          </div>
-        ))}
-      </div>
+            <Button variant="outline" size="sm" onClick={handleSummary} disabled={busy} className="gap-2">
+              <Receipt size={14} aria-hidden="true" /> Resumo do mês
+            </Button>
+          </header>
 
-      {/* Composer */}
-      <div className="border-t border-border p-2 bg-card flex items-center gap-2 shrink-0">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])}
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => fileRef.current?.click()}
-          disabled={busy}
-          className="shrink-0"
-          aria-label="Anexar foto"
-        >
-          <Camera size={20} />
-        </Button>
-        <Input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleText()}
-          placeholder='Ex: "Gastei 12€ no almoço"'
-          disabled={busy}
-          className="flex-1 rounded-full"
-        />
-        <Button
-          size="icon"
-          onClick={handleText}
-          disabled={busy || !text.trim()}
-          className="shrink-0 rounded-full"
-          aria-label="Enviar"
-        >
-          <Send size={16} />
-        </Button>
+          <div className="divide-y divide-border px-4 sm:px-5" aria-live="polite">
+            {bubbles.map((bubble) => {
+              const isError = bubble.kind === "text" && bubble.text?.startsWith("Erro:");
+              return (
+                <article key={bubble.id} className="flex min-w-0 gap-3 py-4">
+                  <span className={`surface-quiet flex size-9 shrink-0 items-center justify-center ${
+                    bubble.kind === "items"
+                      ? "text-financial-income"
+                      : isError
+                        ? "text-financial-expense"
+                        : bubble.kind === "summary"
+                          ? "text-intelligence"
+                          : "text-muted-foreground"
+                  }`} aria-hidden="true">
+                    {bubble.kind === "image" && <Camera size={16} />}
+                    {bubble.kind === "items" && <CheckCircle2 size={16} />}
+                    {bubble.kind === "summary" && <Receipt size={16} />}
+                    {bubble.kind === "loading" && <Loader2 size={16} className="animate-spin" />}
+                    {bubble.kind === "text" && <MessageSquare size={16} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-mono text-label uppercase text-muted-foreground">
+                        {bubble.from === "user" ? "Teste enviado" : bubble.kind === "summary" ? "Resumo mensal" : "Automação"}
+                      </p>
+                      <time className="text-label text-muted-foreground" dateTime={new Date(bubble.ts).toISOString()}>
+                        {new Intl.DateTimeFormat("pt-PT", { hour: "2-digit", minute: "2-digit" }).format(new Date(bubble.ts))}
+                      </time>
+                    </div>
+                    {bubble.kind === "image" && bubble.imageUrl && (
+                      <img src={bubble.imageUrl} alt="Recibo enviado para teste" className="mt-2 max-h-56 max-w-full rounded-md border border-border object-cover" />
+                    )}
+                    {(bubble.kind === "text" || bubble.kind === "loading") && (
+                      <p className={`mt-1 whitespace-pre-wrap text-body-small leading-relaxed ${isError ? "text-financial-expense" : "text-muted-foreground"}`}>
+                        {bubble.text}
+                      </p>
+                    )}
+                    {bubble.kind === "summary" && <p className="mt-1 whitespace-pre-wrap text-body-small text-muted-foreground">{bubble.text}</p>}
+                    {bubble.kind === "items" && (
+                      <div className="mt-2 space-y-3">
+                        <p className="text-body-small font-semibold text-financial-income">
+                          {bubble.items!.length} {bubble.items!.length === 1 ? "item registado" : "itens registados"}
+                        </p>
+                        <ul className="divide-y divide-border border-y border-border">
+                          {bubble.items!.map((item, index) => (
+                            <li key={`${item.name}-${index}`} className="flex min-w-0 items-start justify-between gap-3 py-2 text-body-small">
+                              <span className="min-w-0 break-words text-foreground">
+                                {item.name} <span className="text-muted-foreground">· {item.category}</span>
+                              </span>
+                              <span className="financial-value shrink-0 font-semibold text-financial-expense">{sym}{Number(item.amount).toFixed(2)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          {bubble.total != null && <p className="financial-value text-body-small font-semibold text-foreground">Total {sym}{Number(bubble.total).toFixed(2)}</p>}
+                          <Link to="/dashboard" className="inline-flex min-h-11 items-center gap-1 text-body-small font-semibold text-intelligence hover:underline">
+                            Ver no dashboard <ArrowRight size={13} aria-hidden="true" />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+            <div ref={historyEndRef} data-whatsapp-history-end aria-hidden="true" />
+          </div>
+
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-t border-border p-3 sm:p-4">
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
+            <Button size="icon" variant="ghost" onClick={() => fileRef.current?.click()} disabled={busy} className="shrink-0" aria-label="Anexar foto de recibo" title="Anexar foto de recibo">
+              <Camera size={17} aria-hidden="true" />
+            </Button>
+            <Input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleText()} placeholder='Ex.: "Gastei 12€ no almoço"' disabled={busy} className="min-w-0" />
+            <Button size="icon" onClick={handleText} disabled={busy || !text.trim()} className="shrink-0" aria-label="Enviar despesa" title="Enviar despesa">
+              <Send size={16} aria-hidden="true" />
+            </Button>
+          </div>
+        </section>
+
+        <aside className="min-w-0 space-y-4" aria-label="Estado da automação">
+          <section className="functional-panel min-w-0 p-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="surface-quiet flex size-9 shrink-0 items-center justify-center text-financial-income" aria-hidden="true"><CheckCircle2 size={17} /></span>
+              <div className="min-w-0">
+                <p className="text-body-small font-semibold text-foreground">Ligação verificada</p>
+                <p className="mt-1 text-body-small text-muted-foreground">Envios ativos para</p>
+                <p className="financial-value mt-1 [overflow-wrap:anywhere] text-body-small font-semibold text-foreground">+{WA_BOT_NUMBER}</p>
+              </div>
+            </div>
+            <dl className="mt-5 divide-y divide-border border-y border-border text-body-small">
+              <div className="flex items-center justify-between gap-3 py-3"><dt className="text-muted-foreground">Texto manual</dt><dd className="font-semibold text-financial-income">Ativo</dd></div>
+              <div className="flex items-center justify-between gap-3 py-3"><dt className="text-muted-foreground">Leitura de recibos</dt><dd className="font-semibold text-financial-income">Ativa</dd></div>
+              <div className="flex items-center justify-between gap-3 py-3"><dt className="text-muted-foreground">Resumo mensal</dt><dd className="font-semibold text-intelligence">Dia 25</dd></div>
+            </dl>
+          </section>
+          <Button asChild variant="outline" className="w-full justify-between">
+            <Link to="/dashboard/diagnostico-whatsapp">Diagnóstico técnico <ArrowRight size={15} aria-hidden="true" /></Link>
+          </Button>
+        </aside>
       </div>
     </div>
   );

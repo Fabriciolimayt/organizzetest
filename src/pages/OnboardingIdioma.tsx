@@ -5,8 +5,8 @@ import OnboardingWizardLayout from "@/components/onboarding/OnboardingWizardLayo
 import SelectableCard from "@/components/onboarding/SelectableCard";
 
 const languages = [
-  { code: "pt", flag: "🇵🇹", name: "Português", short: "PT" },
-  { code: "en", flag: "🇬🇧", name: "English", short: "EN" },
+  { code: "pt", name: "Português", short: "PT" },
+  { code: "en", name: "English", short: "EN" },
 ];
 
 const OnboardingIdioma = () => {
@@ -22,24 +22,30 @@ const OnboardingIdioma = () => {
 
   return (
     <OnboardingWizardLayout
-      step={1}
+      step={2}
+      totalSteps={4}
       icon={<Globe size={22} />}
-      title="Qual é a tua língua?"
-      subtitle="A app vai usar esta língua em todo o lado. Podes mudar mais tarde nas definições."
+      title="Em que língua continuamos?"
+      subtitle="A navegação e as mensagens da app vão usar esta língua."
       onBack={() => navigate("/onboarding/nome")}
       onContinue={handleContinue}
       canContinue={!!selected}
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex max-w-xl flex-col gap-3">
         {languages.map((lang) => (
           <SelectableCard
             key={lang.code}
             selected={selected === lang.code}
             onClick={() => setSelected(lang.code)}
+            layout="horizontal"
           >
-            <div className="text-4xl mb-3">{lang.flag}</div>
-            <div className="font-bold text-foreground">{lang.name}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{lang.short}</div>
+            <span className="financial-value flex size-11 shrink-0 items-center justify-center border-r border-border text-sm text-primary">
+              {lang.short}
+            </span>
+            <span className="min-w-0 flex-1 pr-10">
+              <span className="block text-sm font-semibold text-foreground">{lang.name}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Idioma da aplicação</span>
+            </span>
           </SelectableCard>
         ))}
       </div>

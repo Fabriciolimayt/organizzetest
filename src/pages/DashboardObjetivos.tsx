@@ -75,6 +75,11 @@ const DashboardObjetivos = () => {
     ? { id: editingGoal.id, name: editingGoal.name, targetAmount: editingGoal.target_amount, currentAmount: editingGoal.current_amount, currency: editingGoal.currency, targetDate: editingGoal.target_date }
     : null;
   const dateFormatter = new Intl.DateTimeFormat(data.locale, { day: "numeric", month: "long", year: "numeric" });
+  const goalRows = goals.map((goal) => ({
+    goal,
+    progress: calculateGoalProgress(goal.current_amount, goal.target_amount),
+    dateLabel: goal.target_date ? `Meta: ${dateFormatter.format(new Date(`${goal.target_date}T12:00:00`))}` : "Sem data definida",
+  }));
 
   return (
     <div className="space-y-6">
@@ -83,30 +88,39 @@ const DashboardObjetivos = () => {
       {goals.length === 0 ? (
         <DashboardCard><EmptyState icon={<Target size={48} />} message="Ainda não definiste nenhum objetivo financeiro." action={canWrite ? <Button onClick={openCreate}>Criar objetivo</Button> : undefined} /></DashboardCard>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {goals.map((goal) => {
-            const progress = calculateGoalProgress(goal.current_amount, goal.target_amount);
-            return (
-              <DashboardCard key={goal.id} className={goal.is_completed ? "ring-1 ring-primary/50" : ""}>
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Target size={20} /></div>
-                      <div className="min-w-0"><h3 className="truncate font-bold">{goal.name}</h3>{goal.is_completed && <p className="flex items-center gap-1 text-xs font-medium text-primary"><CheckCircle2 size={13} /> Concluído</p>}</div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" aria-label={`Editar ${goal.name}`} onClick={() => { setEditingGoal(goal); setDialogOpen(true); }} disabled={!canWrite || mutationPending}><Pencil size={16} /></Button>
-                      <Button size="icon" variant="ghost" aria-label={`Eliminar ${goal.name}`} onClick={() => setGoalToDelete(goal)} disabled={!canWrite || mutationPending}><Trash2 size={16} className="text-destructive" /></Button>
-                    </div>
-                  </div>
-                  <div className="flex items-end justify-between gap-4"><p className="text-2xl font-semibold">{formatCurrency(goal.current_amount, data.currency, data.locale)}</p><p className="text-sm text-muted-foreground">de {formatCurrency(goal.target_amount, data.currency, data.locale)}</p></div>
-                  <Progress value={progress} className="h-2" />
-                  <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium text-primary">{progress}% concluído</span><span className="text-muted-foreground">{goal.target_date ? `Meta: ${dateFormatter.format(new Date(`${goal.target_date}T12:00:00`))}` : "Sem data definida"}</span></div>
+        <DashboardCard title="Objetivos ativos" headingLevel={2} description={`${goalRows.length} meta${goalRows.length === 1 ? "" : "s"} financeira${goalRows.length === 1 ? "" : "s"}`} noPadding>
+          <div className="divide-y divide-border md:hidden">
+            {goalRows.map(({ goal, progress, dateLabel }) => (
+              <article key={goal.id} className="space-y-3 p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="surface-quiet flex size-9 shrink-0 items-center justify-center text-intelligence"><Target size={17} /></span>
+                  <div className="min-w-0 flex-1"><h3 className="break-words text-compact-title text-foreground">{goal.name}</h3>{goal.is_completed && <p className="mt-1 flex items-center gap-1 text-label font-medium text-intelligence"><CheckCircle2 size={13} /> Concluído</p>}</div>
+                  <GoalActions name={goal.name} canWrite={canWrite} mutationPending={mutationPending} onEdit={() => { setEditingGoal(goal); setDialogOpen(true); }} onDelete={() => setGoalToDelete(goal)} />
                 </div>
-              </DashboardCard>
-            );
-          })}
-        </div>
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2"><p className="financial-value min-w-0 break-words text-value font-semibold text-foreground">{formatCurrency(goal.current_amount, data.currency, data.locale)}</p><p className="financial-value min-w-0 break-words text-body-small text-muted-foreground">de {formatCurrency(goal.target_amount, data.currency, data.locale)}</p></div>
+                <Progress value={progress} aria-label={`${goal.name}: ${progress}% concluído`} className="h-2 [&>div]:bg-intelligence" />
+                <div className="flex min-w-0 flex-wrap justify-between gap-2 text-body-small"><span className="font-medium text-intelligence">{progress}% concluído</span><span className="text-muted-foreground">{dateLabel}</span></div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[820px] border-collapse text-left" aria-label="Objetivos financeiros">
+              <thead><tr className="border-b border-border bg-muted/20 font-mono text-label uppercase text-muted-foreground"><th className="px-5 py-3 font-medium" scope="col">Objetivo</th><th className="px-4 py-3 text-right font-medium" scope="col">Atual</th><th className="px-4 py-3 text-right font-medium" scope="col">Alvo</th><th className="px-4 py-3 font-medium" scope="col">Progresso</th><th className="px-4 py-3 font-medium" scope="col">Data</th><th className="px-4 py-3 text-right font-medium" scope="col">Ações</th></tr></thead>
+              <tbody className="divide-y divide-border">
+                {goalRows.map(({ goal, progress, dateLabel }) => (
+                  <tr key={goal.id} className="hover:bg-muted/20">
+                    <td className="max-w-xs px-5 py-3"><span className="text-body-small font-semibold text-foreground">{goal.name}</span>{goal.is_completed && <span className="ml-2 inline-flex items-center gap-1 text-label font-medium text-intelligence"><CheckCircle2 size={13} /> Concluído</span>}</td>
+                    <td className="financial-value whitespace-nowrap px-4 py-3 text-right text-body-small text-foreground">{formatCurrency(goal.current_amount, data.currency, data.locale)}</td>
+                    <td className="financial-value whitespace-nowrap px-4 py-3 text-right text-body-small text-foreground">{formatCurrency(goal.target_amount, data.currency, data.locale)}</td>
+                    <td className="min-w-44 px-4 py-3"><div className="flex items-center gap-3"><Progress value={progress} aria-label={`${goal.name}: ${progress}% concluído`} className="h-1.5 min-w-24 flex-1 [&>div]:bg-intelligence" /><span className="financial-value text-label font-medium text-intelligence">{progress}%</span></div></td>
+                    <td className="whitespace-nowrap px-4 py-3 text-body-small text-muted-foreground">{dateLabel}</td>
+                    <td className="px-4 py-2"><GoalActions name={goal.name} canWrite={canWrite} mutationPending={mutationPending} onEdit={() => { setEditingGoal(goal); setDialogOpen(true); }} onDelete={() => setGoalToDelete(goal)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DashboardCard>
       )}
       <GoalDialog open={dialogOpen} onOpenChange={setDialogOpen} currency={data.currency} goal={dialogGoal} saving={createGoal.isPending || updateGoal.isPending} onSubmit={submitGoal} />
       <AlertDialog open={Boolean(goalToDelete)} onOpenChange={(open) => !open && setGoalToDelete(null)}>
@@ -125,5 +139,14 @@ const DashboardObjetivos = () => {
     </div>
   );
 };
+
+function GoalActions({ name, canWrite, mutationPending, onEdit, onDelete }: { name: string; canWrite: boolean; mutationPending: boolean; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex shrink-0 justify-end gap-1">
+      <Button size="icon" variant="ghost" aria-label={`Editar ${name}`} title="Editar objetivo" onClick={onEdit} disabled={!canWrite || mutationPending}><Pencil size={15} /></Button>
+      <Button size="icon" variant="ghost" className="hover:bg-financial-expense/10" aria-label={`Eliminar ${name}`} title="Eliminar objetivo" onClick={onDelete} disabled={!canWrite || mutationPending}><Trash2 size={15} className="text-financial-expense" /></Button>
+    </div>
+  );
+}
 
 export default DashboardObjetivos;

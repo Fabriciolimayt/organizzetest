@@ -1,245 +1,377 @@
 import {
   AlertCircle,
-  ArrowRight,
   Check,
   ChevronRight,
   LoaderCircle,
-  MoreHorizontal,
   Plus,
   WalletCards,
 } from "lucide-react";
 
+import DashboardCard from "@/components/dashboard/DashboardCard";
+import DecisionPanel from "@/components/dashboard/DecisionPanel";
+import FinancialRow from "@/components/dashboard/FinancialRow";
+import MetricStrip from "@/components/dashboard/MetricStrip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const buttonClass =
-  "focus-ring interactive-control h-11 rounded-md bg-primary px-4 text-body-small font-semibold text-primary-foreground hover:bg-primary-hover active:translate-y-px";
-const quietButtonClass =
-  "focus-ring interactive-control h-11 rounded-md border border-border bg-card px-4 text-body-small font-semibold text-foreground hover:bg-muted active:translate-y-px";
+const StateLabel = ({ children }: { children: string }) => (
+  <p className="mb-2 font-mono text-[10px] font-semibold uppercase text-muted-foreground">{children}</p>
+);
 
 const PrimitiveShowcase = () => (
   <main className="min-h-[100dvh] bg-background text-foreground">
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <header className="border-b border-border pb-6">
-        <p className="font-guidance text-panel-title text-primary">Livro Financeiro Humano</p>
-        <h1 className="mt-2 text-page-title">Fundação visual</h1>
+      <header className="pb-8">
+        <p className="text-panel-title text-intelligence">Livro Financeiro Humano</p>
+        <h1 className="mt-2 text-page-title">Primitivos Invisible Ledger</h1>
         <p className="mt-2 max-w-2xl text-body text-muted-foreground">
           Estados essenciais para uma experiência financeira clara, calma e previsível.
         </p>
       </header>
 
-      <div className="grid gap-10 py-8 lg:grid-cols-2 lg:gap-12">
-        <section aria-labelledby="actions-title">
-          <h2 id="actions-title" className="text-panel-title">Ações</h2>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button variant="ghost" className={buttonClass}>
-              <Plus aria-hidden="true" />
-              Adicionar lançamento
-            </Button>
-            <Button variant="ghost" className={quietButtonClass}>Cancelar</Button>
-            <Button
-              variant="ghost"
-              className="focus-ring interactive-control h-11 rounded-md bg-destructive px-4 text-body-small font-semibold text-destructive-foreground hover:bg-destructive/90 active:translate-y-px"
-            >
-              Eliminar
-            </Button>
-            <Button variant="ghost" className={buttonClass} disabled>
-              Ação indisponível
-            </Button>
-            <Button variant="ghost" className={buttonClass} aria-busy="true">
-              <LoaderCircle className="animate-spin" aria-hidden="true" />
-              A guardar
-            </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="focus-ring interactive-control size-11 rounded-md border border-border bg-card text-foreground hover:bg-muted"
-                  aria-label="Mais opções"
-                >
-                  <MoreHorizontal aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Mais opções</TooltipContent>
-            </Tooltip>
+      <section aria-labelledby="decision-title" className="border-t border-border py-8">
+        <h2 id="decision-title" className="text-panel-title">Próxima decisão</h2>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <DecisionPanel
+            eyebrow="Próxima decisão"
+            title="Podes gastar 96 € em lazer."
+            description="Sem ultrapassar o limite deste mês."
+          />
+          <DecisionPanel
+            eyebrow="Atenção ao limite"
+            title="Restam 24 € para refeições fora."
+            description="Mantém as próximas escolhas abaixo deste valor até ao fim do mês."
+            tone="warning"
+            action={<Button variant="outline">Rever despesas</Button>}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-x-10 lg:grid-cols-2">
+        <section aria-labelledby="buttons-title" className="border-t border-border py-8">
+          <h2 id="buttons-title" className="text-panel-title">Botões</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <StateLabel>Predefinido e interativo</StateLabel>
+              <Button>
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                Adicionar lançamento
+              </Button>
+            </div>
+            <div>
+              <StateLabel>Secundário</StateLabel>
+              <Button variant="outline">Cancelar</Button>
+            </div>
+            <div>
+              <StateLabel>Desativado</StateLabel>
+              <Button disabled>Ação indisponível</Button>
+            </div>
+            <div>
+              <StateLabel>A carregar</StateLabel>
+              <Button disabled aria-busy="true">
+                <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+                A guardar
+              </Button>
+            </div>
+            <div className="sm:col-span-2">
+              <StateLabel>Rótulo português longo</StateLabel>
+              <Button variant="secondary" className="max-w-full">
+                Confirmar a atualização de todos os lançamentos selecionados
+              </Button>
+            </div>
           </div>
         </section>
 
-        <section aria-labelledby="fields-title">
-          <h2 id="fields-title" className="text-panel-title">Campos</h2>
+        <section aria-labelledby="inputs-title" className="border-t border-border py-8">
+          <h2 id="inputs-title" className="text-panel-title">Campos</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="showcase-description" className="text-label">Descrição</Label>
-              <Input
-                id="showcase-description"
-                className="focus-ring h-11 rounded-md bg-card text-body"
-                placeholder="Ex.: Supermercado"
-              />
+            <div>
+              <StateLabel>Predefinido</StateLabel>
+              <Label htmlFor="showcase-description">Descrição</Label>
+              <Input id="showcase-description" className="mt-2" placeholder="Ex.: Supermercado" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="showcase-disabled" className="text-label">Campo bloqueado</Label>
-              <Input
-                id="showcase-disabled"
-                className="focus-ring h-11 rounded-md bg-muted text-body"
-                value="Sem edição"
-                disabled
-                readOnly
-              />
+            <div>
+              <StateLabel>Desativado</StateLabel>
+              <Label htmlFor="showcase-disabled">Campo bloqueado</Label>
+              <Input id="showcase-disabled" className="mt-2" value="Sem edição" disabled readOnly />
             </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="showcase-error" className="text-label">Montante</Label>
+            <div className="sm:col-span-2">
+              <StateLabel>Erro</StateLabel>
+              <Label htmlFor="showcase-error">Montante mensal disponível</Label>
               <Input
                 id="showcase-error"
-                className="focus-ring h-11 rounded-md border-destructive bg-card text-body"
+                className="mt-2"
                 value="valor inválido"
                 aria-invalid="true"
                 aria-describedby="showcase-error-message"
                 readOnly
               />
-              <p id="showcase-error-message" className="text-body-small text-destructive">
+              <p id="showcase-error-message" className="mt-2 flex items-center gap-2 text-sm text-financial-expense">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
                 Introduza um montante válido.
               </p>
             </div>
           </div>
         </section>
 
-        <section aria-labelledby="status-title">
-          <h2 id="status-title" className="text-panel-title">Estados e valores</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Badge className="rounded-full border-transparent bg-success-wash text-accent-foreground hover:bg-success-wash">
-              <Check aria-hidden="true" className="mr-1 size-3" /> Ativo
-            </Badge>
-            <Badge className="rounded-full border-transparent bg-warning-wash text-warning-foreground hover:bg-warning-wash">
-              Atenção
-            </Badge>
-            <Badge variant="outline" className="rounded-full bg-card text-muted-foreground">Pendente</Badge>
-            <Badge className="rounded-full border-transparent bg-destructive text-destructive-foreground hover:bg-destructive">
-              Em atraso
-            </Badge>
-          </div>
-          <div className="mt-4 grid grid-cols-2 border-y border-border sm:grid-cols-3">
-            <div className="py-4 pr-3">
-              <p className="text-label text-muted-foreground">Saldo disponível</p>
-              <p className="financial-value mt-1 break-words text-value">2 840,20 €</p>
+        <section aria-labelledby="select-title" className="border-t border-border py-8">
+          <h2 id="select-title" className="text-panel-title">Seleção</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <StateLabel>Selecionado</StateLabel>
+              <Label htmlFor="showcase-account">Conta</Label>
+              <Select defaultValue="principal">
+                <SelectTrigger id="showcase-account" className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Contas</SelectLabel>
+                    <SelectItem value="principal">Conta principal</SelectItem>
+                    <SelectItem value="poupanca">Poupança</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="border-l border-border px-3 py-4">
-              <p className="text-label text-muted-foreground">Receitas</p>
-              <p className="financial-value mt-1 break-words text-value text-data-blue">4 120,00 €</p>
+            <div>
+              <StateLabel>Desativado</StateLabel>
+              <Label htmlFor="showcase-category">Categoria</Label>
+              <Select disabled defaultValue="alimentacao">
+                <SelectTrigger id="showcase-category" className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="alimentacao">Alimentação</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="col-span-2 border-t border-border py-4 sm:col-span-1 sm:border-l sm:border-t-0 sm:pl-3">
-              <p className="text-label text-muted-foreground">Despesas</p>
-              <p className="financial-value mt-1 break-words text-value">1 279,80 €</p>
+            <div className="sm:col-span-2">
+              <StateLabel>Rótulo português longo</StateLabel>
+              <Select defaultValue="partilhada">
+                <SelectTrigger aria-label="Conta usada para despesas familiares partilhadas">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="partilhada">
+                      Conta usada para despesas familiares partilhadas
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </section>
 
-        <section aria-labelledby="navigation-title">
-          <h2 id="navigation-title" className="text-panel-title">Navegação</h2>
-          <nav aria-label="Exemplo de navegação" className="mt-4 surface-panel p-2">
-            <div className="grid gap-1 sm:grid-cols-3">
-              <button
-                type="button"
-                aria-current="page"
-                className="focus-ring interactive-control flex min-h-11 items-center gap-3 rounded-md bg-muted px-3 text-left text-body-small font-semibold text-primary"
-              >
-                <WalletCards className="size-4" aria-hidden="true" />
-                Visão geral
-              </button>
-              <button
-                type="button"
-                className="focus-ring interactive-control flex min-h-11 items-center gap-3 rounded-md px-3 text-left text-body-small font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Lançamentos
-              </button>
-              <button
-                type="button"
-                disabled
-                className="focus-ring flex min-h-11 items-center gap-3 rounded-md px-3 text-left text-body-small font-medium text-muted-foreground opacity-50"
-              >
-                Arquivo
-              </button>
-            </div>
-          </nav>
+        <section aria-labelledby="tabs-title" className="border-t border-border py-8">
+          <h2 id="tabs-title" className="text-panel-title">Separadores</h2>
+          <Tabs defaultValue="summary" className="mt-4">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="summary">Resumo</TabsTrigger>
+              <TabsTrigger value="comparison">Comparação com o mês anterior</TabsTrigger>
+              <TabsTrigger value="archive" disabled>Arquivo</TabsTrigger>
+            </TabsList>
+            <TabsContent value="summary">
+              <p className="border-l border-intelligence pl-4 text-sm text-muted-foreground">
+                O saldo continua dentro do plano definido para agosto.
+              </p>
+            </TabsContent>
+            <TabsContent value="comparison">
+              <p className="border-l border-intelligence pl-4 text-sm text-muted-foreground">
+                As despesas desceram 8% face ao mesmo período do mês anterior.
+              </p>
+            </TabsContent>
+          </Tabs>
         </section>
       </div>
 
-      <section aria-labelledby="panels-title">
-        <h2 id="panels-title" className="text-panel-title">Painéis e linhas</h2>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <article className="surface-panel overflow-hidden">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4">
-              <div>
-                <h3 className="text-compact-title">Movimentos recentes</h3>
-                <p className="mt-1 text-body-small text-muted-foreground">Agosto de 2026</p>
-              </div>
-              <Button variant="ghost" className="focus-ring h-11 rounded-md px-3 text-body-small text-primary hover:bg-muted">
-                Ver todos <ArrowRight aria-hidden="true" />
-              </Button>
-            </div>
+      <section aria-labelledby="metrics-title" className="border-t border-border py-8">
+        <h2 id="metrics-title" className="text-panel-title">Métricas</h2>
+        <div className="mt-4">
+          <MetricStrip
+            items={[
+              { label: "Disponível", value: "2 840,20 €", variant: "accent", detail: "Dentro do plano" },
+              { label: "Receitas", value: "+ 4 120,00 €", variant: "positive", detail: "Confirmadas" },
+              { label: "Despesas", value: "− 1 279,80 €", variant: "negative", detail: "Confirmadas" },
+              {
+                label: "Montante ainda não atribuído a uma categoria",
+                value: "—",
+                detail: <span className="text-financial-warning">Requer atenção</span>,
+              },
+            ]}
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="rows-title" className="border-t border-border py-8">
+        <h2 id="rows-title" className="text-panel-title">Linhas financeiras</h2>
+        <div className="mt-4">
+          <DashboardCard title="Movimentos recentes" description="Agosto de 2026" noPadding>
             <div className="divide-y divide-border">
-              <div className="flex min-w-0 items-center gap-3 p-4">
-                <span className="surface-quiet flex size-10 shrink-0 items-center justify-center" aria-hidden="true">
-                  <WalletCards className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-body-small font-semibold">Supermercado do bairro</p>
-                  <p className="text-body-small text-muted-foreground">Alimentação · hoje</p>
-                </div>
-                <p className="financial-value shrink-0 text-body-small font-semibold">− 52,40 €</p>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              </div>
-              <div className="flex min-w-0 items-center gap-3 p-4">
-                <span className="surface-quiet flex size-10 shrink-0 items-center justify-center" aria-hidden="true">
-                  <WalletCards className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-body-small font-semibold">Transferência recebida</p>
-                  <p className="text-body-small text-muted-foreground">Receita · ontem</p>
-                </div>
-                <p className="financial-value shrink-0 text-body-small font-semibold text-data-blue">+ 820,00 €</p>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              </div>
+              <FinancialRow
+                icon={<WalletCards className="size-4" />}
+                title="Supermercado do bairro"
+                meta="Alimentação · hoje"
+                amount="− 52,40 €"
+                amountTone="negative"
+                onClick={() => undefined}
+              />
+              <FinancialRow
+                icon={<Check className="size-4" />}
+                title="Transferência recebida"
+                meta="Receita · ontem"
+                amount="+ 820,00 €"
+                amountTone="positive"
+              />
+              <FinancialRow
+                title="Pagamento recorrente de serviços domésticos partilhados pela família"
+                meta="Rótulo longo · sem montante associado"
+                action={<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+              />
             </div>
-          </article>
+          </DashboardCard>
+        </div>
+      </section>
 
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-            <article className="surface-panel flex min-h-48 flex-col items-start justify-between p-4">
-              <WalletCards className="size-5 text-primary" aria-hidden="true" />
-              <div>
-                <h3 className="font-guidance text-compact-title">Ainda sem movimentos</h3>
-                <p className="mt-2 text-body-small text-muted-foreground">O primeiro lançamento aparece aqui.</p>
-              </div>
-              <Button variant="ghost" className={quietButtonClass}>Adicionar</Button>
-            </article>
+      <section aria-labelledby="tables-title" className="border-t border-border py-8">
+        <h2 id="tables-title" className="text-panel-title">Tabelas</h2>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <StateLabel>Selecionado e aviso</StateLabel>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Montante</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow data-state="selected">
+                  <TableCell>Alimentação</TableCell>
+                  <TableCell><Badge variant="outline">Selecionado</Badge></TableCell>
+                  <TableCell className="financial-value text-right text-financial-expense">− 186,20 €</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Refeições fora</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="border-financial-warning/40 text-financial-warning">
+                      Perto do limite
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="financial-value text-right">− 96,00 €</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          <div>
+            <StateLabel>Vazio</StateLabel>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Movimento</TableHead>
+                  <TableHead className="text-right">Montante</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
+                    Ainda não existem movimentos neste período.
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </section>
 
-            <article className="surface-panel min-h-48 p-4" aria-busy="true" aria-label="A carregar movimentos">
-              <div className="flex items-center gap-3">
-                <Skeleton className="size-10 shrink-0 rounded-md" />
-                <div className="w-full space-y-2">
-                  <Skeleton className="h-3 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
+      <section aria-labelledby="overlays-title" className="border-t border-border py-8">
+        <h2 id="overlays-title" className="text-panel-title">Painel e diálogo</h2>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ainda sem regras automáticas</CardTitle>
+              <CardDescription>As regras criadas para categorizar movimentos aparecem aqui.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Começa com uma regra simples e ajusta-a quando necessário.</p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline">Criar regra</Button>
+            </CardFooter>
+          </Card>
+
+          <div className="flex min-h-48 flex-col items-start justify-between border-l border-border py-2 pl-5 sm:pl-6">
+            <div>
+              <StateLabel>Diálogo fechado</StateLabel>
+              <h3 className="text-compact-title">Editar limite mensal</h3>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                O diálogo conserva foco, teclado e composição Radix.
+              </p>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>Abrir diálogo</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar limite mensal</DialogTitle>
+                  <DialogDescription>Define o máximo que pretendes gastar em refeições fora.</DialogDescription>
+                </DialogHeader>
+                <div>
+                  <Label htmlFor="dialog-limit">Limite</Label>
+                  <Input id="dialog-limit" className="mt-2 financial-value" defaultValue="120,00 €" />
                 </div>
-              </div>
-              <div className="mt-6 space-y-3">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-5/6" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-            </article>
-
-            <article className="surface-panel flex min-h-48 flex-col items-start justify-between border-destructive p-4" role="alert">
-              <AlertCircle className="size-5 text-destructive" aria-hidden="true" />
-              <div>
-                <h3 className="text-compact-title">Não foi possível carregar</h3>
-                <p className="mt-2 text-body-small text-muted-foreground">Tente novamente sem perder o seu contexto.</p>
-              </div>
-              <Button variant="ghost" className={quietButtonClass}>Repetir</Button>
-            </article>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <DialogClose asChild>
+                    <Button>Guardar limite</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </section>

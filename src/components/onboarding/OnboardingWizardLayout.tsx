@@ -3,9 +3,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import "@/pages/auth-paper.css";
 
 interface Props {
-  step: 1 | 2 | 3;
+  step: 1 | 2 | 3 | 4;
   totalSteps?: number;
   icon: ReactNode;
   title: string;
@@ -32,88 +33,86 @@ const OnboardingWizardLayout = ({
   children,
 }: Props) => {
   const navigate = useNavigate();
-  const progress = (step / totalSteps) * 100;
 
   const handleBack = onBack ?? (() => navigate(-1));
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="border-b border-border bg-card px-6 py-4">
-        <Logo />
+    <div className="entry-editorial entry-onboarding">
+      <header className="entry-editorial__header">
+        <div className="entry-editorial__header-inner">
+          <Logo white />
+          <span className="entry-editorial__header-note text-label">
+            Configuração segura
+          </span>
+        </div>
       </header>
 
-      <div className="h-1 w-full bg-muted">
-        <div
-          className="h-full bg-primary transition-all"
-          style={{
-            width: `${progress}%`,
-          }}
-        />
-      </div>
-
-      <div className="px-6 py-4 flex items-center justify-between text-sm">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-1 text-foreground/80 hover:text-primary-glow transition-colors"
-        >
-          <ChevronLeft size={16} /> Voltar
-        </button>
-        <div className="flex items-center gap-1.5">
+      <div
+        className="entry-editorial__progress"
+        role="progressbar"
+        aria-label="Progresso da configuração"
+        aria-valuemin={1}
+        aria-valuemax={totalSteps}
+        aria-valuenow={step}
+        aria-valuetext={`Passo ${step} de ${totalSteps}`}
+      >
+        <span className="font-mono text-label text-muted-foreground">
+          {String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}
+        </span>
+        <div className="grid grid-flow-col gap-1.5" aria-hidden="true">
           {Array.from({ length: totalSteps }).map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i + 1 === step
-                  ? "w-6 bg-primary"
-                  : i + 1 < step
-                  ? "w-1.5 bg-primary/80"
-                  : "w-1.5 bg-border"
-              }`}
+              className={`h-0.5 w-full ${i + 1 <= step ? "bg-primary" : "bg-border"}`}
             />
           ))}
         </div>
-        <span className="text-muted-foreground font-medium">
-          {step} / {totalSteps}
-        </span>
       </div>
 
-      <main className="flex-1 px-6 pb-32 max-w-2xl w-full mx-auto">
-        <div
-          className="surface-quiet flex size-14 items-center justify-center rounded-md text-primary mb-5"
-        >
-          {icon}
+      <main className="entry-editorial__main">
+        <div className="editorial-reveal">
+          <div className="entry-editorial__icon">
+            {icon}
+          </div>
+          <div className="max-w-2xl">
+            <h1 className="entry-editorial__title">
+              {title}
+            </h1>
+            {subtitle && (
+              <div className="entry-editorial__description">
+                {subtitle}
+              </div>
+            )}
+          </div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-normal text-foreground tracking-tight mb-3 font-serif leading-[1.05]">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-muted-foreground mb-8 text-lg">{subtitle}</p>
-        )}
-        <div className="mt-6">{children}</div>
+        <div className="entry-editorial__content">{children}</div>
       </main>
 
-      <div className="fixed bottom-0 inset-x-0 border-t border-border bg-card px-6 py-4">
-        <div className="max-w-2xl mx-auto space-y-3">
-          <div className="flex items-center gap-3">
+      <footer className="entry-editorial__footer">
+        <div className="entry-editorial__footer-inner">
+          <div className="entry-editorial__actions">
             <button
+              type="button"
               onClick={handleBack}
-              className="focus-ring flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
               aria-label="Voltar"
+              className="focus-ring interactive-control inline-flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground hover:border-foreground/45 hover:bg-muted"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={17} aria-hidden="true" />
+              <span className="hidden sm:inline">Voltar</span>
             </button>
             <Button
               size="lg"
+              type="button"
               onClick={onContinue}
               disabled={!canContinue}
-              className="flex-1 h-12 text-base font-semibold rounded-full gap-2"
+              className="w-full max-w-xs"
             >
-              {continueLabel} <ChevronRight size={18} />
+              {continueLabel} <ChevronRight size={18} aria-hidden="true" />
             </Button>
           </div>
-          {extraFooter}
+          {extraFooter && <div className="mt-3">{extraFooter}</div>}
         </div>
-      </div>
+      </footer>
     </div>
   );
 };

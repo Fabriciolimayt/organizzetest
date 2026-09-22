@@ -5,25 +5,34 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "focus-ring interactive-control inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "focus-ring interactive-control inline-flex items-center justify-center gap-2 whitespace-normal rounded-md border text-center text-sm font-semibold text-foreground disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "border border-primary bg-primary text-primary-foreground shadow-[2px_2px_0_hsl(var(--foreground))] hover:bg-primary-hover hover:-translate-y-px active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-        destructive: "border border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90 active:translate-y-px",
-        outline: "border border-border bg-card text-foreground hover:bg-muted",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border",
-        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        link: "text-primary underline-offset-4 hover:underline rounded-none",
-        glass: "border border-border bg-card text-foreground hover:bg-muted",
-        gradient: "border border-primary bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px",
-        gold: "border border-warning bg-warning-wash text-warning-foreground hover:bg-warning/15",
+        default:
+          "border-primary bg-primary text-primary-foreground hover:bg-primary-hover",
+        destructive:
+          "border-financial-expense bg-financial-expense text-primary-foreground hover:bg-financial-expense/90",
+        outline:
+          "border-border bg-card text-foreground hover:border-foreground/45 hover:bg-muted/65",
+        secondary:
+          "border-border bg-secondary text-secondary-foreground hover:bg-muted",
+        ghost:
+          "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+        link:
+          "border-transparent text-primary underline-offset-4 hover:underline hover:text-primary-hover rounded-none",
+        glass:
+          "border-border bg-card text-foreground hover:border-foreground/45 hover:bg-muted/65",
+        gradient:
+          "border-primary bg-primary text-primary-foreground hover:bg-primary-hover",
+        gold:
+          "border-financial-warning/40 bg-warning-wash text-warning-foreground hover:border-financial-warning/70",
       },
       size: {
-        default: "h-10 px-5 py-2",
-        sm: "h-9 px-4",
-        lg: "h-12 px-8 text-base",
-        icon: "h-10 w-10",
+        default: "min-h-11 px-4 py-2",
+        sm: "min-h-11 px-3 py-2 text-xs",
+        lg: "min-h-12 px-6 py-2.5 text-base",
+        icon: "size-11",
       },
     },
     defaultVariants: {

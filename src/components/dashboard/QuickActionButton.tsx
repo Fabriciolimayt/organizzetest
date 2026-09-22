@@ -10,12 +10,12 @@ const QuickActionButton = ({ icon, label, onClick }: QuickActionButtonProps) => 
   <button
     onClick={onClick}
     type="button"
-    className="focus-ring group flex min-h-20 min-w-20 flex-col items-center gap-2 rounded-md px-2 py-1"
+    className="focus-ring group flex min-h-20 min-w-20 flex-col items-center gap-2 rounded-md p-2 transition-colors hover:bg-muted/45 active:scale-[0.98]"
   >
-    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+    <div className="surface-quiet flex h-12 w-12 items-center justify-center text-primary transition-colors group-hover:border-primary/45">
       {icon}
     </div>
-    <span className="text-xs text-muted-foreground font-medium group-hover:text-foreground transition-colors">
+    <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
       {label}
     </span>
   </button>

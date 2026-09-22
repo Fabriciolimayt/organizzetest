@@ -1,39 +1,39 @@
-type LogoProps = {
+export type LogoProps = {
   size?: "sm" | "md" | "lg";
   white?: boolean;
+  markOnly?: boolean;
 };
 
 const SIZES = {
-  sm: { text: "text-sm", box: 20, gap: "gap-2" },
-  md: { text: "text-base", box: 24, gap: "gap-2.5" },
-  lg: { text: "text-xl", box: 28, gap: "gap-3" },
+  sm: { text: "text-body-small", box: 16, gap: "gap-2" },
+  md: { text: "text-compact-title", box: 24, gap: "gap-2" },
+  lg: { text: "text-panel-title", box: 28, gap: "gap-3" },
 };
 
-const Logo = ({ size = "md", white = false }: LogoProps) => {
+const Logo = ({ size = "md", white = false, markOnly = false }: LogoProps) => {
   const sizing = SIZES[size];
-  const color = white ? "text-white" : "text-foreground";
-  const markColor = white ? "text-white" : "text-primary";
+  const color = white ? "text-sidebar-foreground" : "text-foreground";
+  const markColor = white ? "text-marker" : "text-primary";
 
   return (
-    <span className={`inline-flex items-center ${sizing.gap} ${color}`} aria-label="Organizze">
-      <svg
-        width={sizing.box}
-        height={sizing.box}
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-        className={`shrink-0 ${markColor}`}
-      >
-        <rect x="3" y="2.5" width="18" height="19" rx="3" stroke="currentColor" strokeWidth="1.5" />
-        <path
-          d="M7.5 7.5H16.5M7.5 12H16.5M7.5 16.5H13"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <path d="M6 2.5V21.5" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-      <span className={`${sizing.text} font-semibold leading-none`}>Organizze</span>
+    <span className={`inline-flex select-none items-center ${sizing.gap} ${color}`} aria-label="Organizze" role="img">
+      <span className="relative flex items-center justify-center">
+        <svg
+          width={sizing.box}
+          height={sizing.box}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+          className={`shrink-0 ${markColor}`}
+        >
+          <path d="M3 4h6v4H3V4Zm12 0h6v4h-6V4ZM5 10h5v4H5v-4Zm9 0h5v4h-5v-4Zm-5 6h6v4H9v-4Z" />
+        </svg>
+      </span>
+      {!markOnly && (
+        <span data-size={size} className={`brand-wordmark ${sizing.text} font-semibold ${color}`}>
+          Organizze
+        </span>
+      )}
     </span>
   );
 };

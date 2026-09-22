@@ -85,6 +85,19 @@ const DashboardLimiteGastos = () => {
     : null;
   const spending = spendingQuery.data ?? {};
   const categoryNames = new Map(data.categories.map((category) => [category.id, category.name]));
+  const limitRows = limits.map((limit) => {
+    const spent = spending[limit.id] ?? 0;
+    const progress = calculateLimitProgress(spent, limit.amount);
+    return {
+      limit,
+      spent,
+      progress,
+      name: limit.category_id ? categoryNames.get(limit.category_id) ?? "Categoria removida" : "Todas as despesas",
+      tone: progress.state === "exceeded" ? "text-financial-expense" : progress.state === "warning" ? "text-financial-warning" : "text-financial-income",
+      progressClass: progress.state === "exceeded" ? "[&>div]:bg-financial-expense" : progress.state === "warning" ? "[&>div]:bg-financial-warning" : "[&>div]:bg-financial-income",
+      stateLabel: progress.state === "exceeded" ? "Limite excedido" : progress.state === "warning" ? "Próximo do limite" : "Dentro do limite",
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -93,30 +106,38 @@ const DashboardLimiteGastos = () => {
       {limits.length === 0 ? (
         <DashboardCard><EmptyState icon={<ShieldCheck size={48} />} message="Ainda não definiste limites de gastos." action={canWrite ? <Button onClick={openCreate}>Definir limite</Button> : undefined} /></DashboardCard>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {limits.map((limit) => {
-            const spent = spending[limit.id] ?? 0;
-            const progress = calculateLimitProgress(spent, limit.amount);
-            const tone = progress.state === "exceeded" ? "text-destructive" : progress.state === "warning" ? "text-amber-600" : "text-primary";
-            const progressClass = progress.state === "exceeded" ? "[&>div]:bg-destructive" : progress.state === "warning" ? "[&>div]:bg-amber-500" : "";
-            return (
-              <DashboardCard key={limit.id}>
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div><h3 className="font-bold">{limit.category_id ? categoryNames.get(limit.category_id) ?? "Categoria removida" : "Todas as despesas"}</h3><p className="text-sm text-muted-foreground">{periodLabels[limit.period]}</p></div>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" aria-label="Editar limite" onClick={() => { setEditingLimit(limit); setDialogOpen(true); }} disabled={!canWrite || mutationPending}><Pencil size={16} /></Button>
-                      <Button size="icon" variant="ghost" aria-label="Eliminar limite" onClick={() => setLimitToDelete(limit)} disabled={!canWrite || mutationPending}><Trash2 size={16} className="text-destructive" /></Button>
-                    </div>
-                  </div>
-                  <div className="flex items-end justify-between gap-4"><p className="text-2xl font-semibold">{formatCurrency(spent, data.currency, data.locale)}</p><p className="text-sm text-muted-foreground">de {formatCurrency(limit.amount, data.currency, data.locale)}</p></div>
-                  <Progress value={Math.min(progress.percentage, 100)} className={`h-2 ${progressClass}`} />
-                  <p className={`flex items-center gap-1 text-sm font-medium ${tone}`}>{progress.state !== "safe" && <AlertTriangle size={15} />}{progress.percentage}% do limite utilizado</p>
+        <DashboardCard title="Limites ativos" headingLevel={2} description={`${limitRows.length} regra${limitRows.length === 1 ? "" : "s"} acompanhada${limitRows.length === 1 ? "" : "s"}`} noPadding>
+          <div className="divide-y divide-border md:hidden">
+            {limitRows.map(({ limit, spent, progress, name, tone, progressClass, stateLabel }) => (
+              <article key={limit.id} className="space-y-3 p-4">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0"><h3 className="break-words text-compact-title text-foreground">{name}</h3><p className="mt-1 text-body-small text-muted-foreground">{periodLabels[limit.period]}</p></div>
+                  <LimitActions canWrite={canWrite} mutationPending={mutationPending} onEdit={() => { setEditingLimit(limit); setDialogOpen(true); }} onDelete={() => setLimitToDelete(limit)} />
                 </div>
-              </DashboardCard>
-            );
-          })}
-        </div>
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2"><p className="financial-value min-w-0 break-words text-value font-semibold text-foreground">{formatCurrency(spent, data.currency, data.locale)}</p><p className="financial-value min-w-0 break-words text-body-small text-muted-foreground">de {formatCurrency(limit.amount, data.currency, data.locale)}</p></div>
+                <Progress value={Math.min(progress.percentage, 100)} aria-label={`${progress.percentage}% do limite utilizado`} className={`h-2 ${progressClass}`} />
+                <p className={`flex items-center gap-1 text-body-small font-medium ${tone}`}>{progress.state !== "safe" && <AlertTriangle size={15} />}{stateLabel}: {progress.percentage}% utilizado</p>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[820px] border-collapse text-left" aria-label="Limites de gastos">
+              <thead><tr className="border-b border-border bg-muted/20 font-mono text-label uppercase text-muted-foreground"><th className="px-5 py-3 font-medium" scope="col">Âmbito</th><th className="px-4 py-3 font-medium" scope="col">Período</th><th className="px-4 py-3 text-right font-medium" scope="col">Gasto</th><th className="px-4 py-3 text-right font-medium" scope="col">Limite</th><th className="px-4 py-3 font-medium" scope="col">Utilização</th><th className="px-4 py-3 text-right font-medium" scope="col">Ações</th></tr></thead>
+              <tbody className="divide-y divide-border">
+                {limitRows.map(({ limit, spent, progress, name, tone, progressClass, stateLabel }) => (
+                  <tr key={limit.id} className="hover:bg-muted/20">
+                    <td className="max-w-xs px-5 py-3 text-body-small font-semibold text-foreground">{name}</td>
+                    <td className="px-4 py-3 text-body-small text-muted-foreground">{periodLabels[limit.period]}</td>
+                    <td className="financial-value whitespace-nowrap px-4 py-3 text-right text-body-small text-foreground">{formatCurrency(spent, data.currency, data.locale)}</td>
+                    <td className="financial-value whitespace-nowrap px-4 py-3 text-right text-body-small text-foreground">{formatCurrency(limit.amount, data.currency, data.locale)}</td>
+                    <td className="min-w-52 px-4 py-3"><div className="flex items-center gap-3"><Progress value={Math.min(progress.percentage, 100)} aria-label={`${progress.percentage}% do limite utilizado`} className={`h-1.5 min-w-24 flex-1 ${progressClass}`} /><span className={`whitespace-nowrap text-label font-medium ${tone}`}>{stateLabel} · {progress.percentage}%</span></div></td>
+                    <td className="px-4 py-2"><LimitActions canWrite={canWrite} mutationPending={mutationPending} onEdit={() => { setEditingLimit(limit); setDialogOpen(true); }} onDelete={() => setLimitToDelete(limit)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DashboardCard>
       )}
       <LimitDialog open={dialogOpen} onOpenChange={setDialogOpen} currency={data.currency} categories={data.categories.filter((category) => category.transaction_type === "expense")} limit={dialogLimit} saving={createLimit.isPending || updateLimit.isPending} onSubmit={submitLimit} />
       <AlertDialog open={Boolean(limitToDelete)} onOpenChange={(open) => !open && setLimitToDelete(null)}>
@@ -135,5 +156,14 @@ const DashboardLimiteGastos = () => {
     </div>
   );
 };
+
+function LimitActions({ canWrite, mutationPending, onEdit, onDelete }: { canWrite: boolean; mutationPending: boolean; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex shrink-0 justify-end gap-1">
+      <Button size="icon" variant="ghost" aria-label="Editar limite" title="Editar limite" onClick={onEdit} disabled={!canWrite || mutationPending}><Pencil size={15} /></Button>
+      <Button size="icon" variant="ghost" className="hover:bg-financial-expense/10" aria-label="Eliminar limite" title="Eliminar limite" onClick={onDelete} disabled={!canWrite || mutationPending}><Trash2 size={15} className="text-financial-expense" /></Button>
+    </div>
+  );
+}
 
 export default DashboardLimiteGastos;

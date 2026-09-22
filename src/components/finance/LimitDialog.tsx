@@ -65,19 +65,19 @@ const LimitDialog = ({ open, onOpenChange, currency, categories, limit, saving =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader className="border-b border-border pb-4">
           <DialogTitle>{limit ? "Editar limite" : "Novo limite"}</DialogTitle>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4 pt-1" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label>Categoria</Label>
+            <Label htmlFor="limit-category">Categoria</Label>
             <Select
               value={values.categoryId ?? "all"}
               onValueChange={(value) => setValues((current) => ({ ...current, categoryId: value === "all" ? null : value }))}
               disabled={saving}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="limit-category"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as despesas</SelectItem>
                 {categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}
@@ -95,16 +95,17 @@ const LimitDialog = ({ open, onOpenChange, currency, categories, limit, saving =
                 value={values.amount || ""}
                 onChange={(event) => setValues((current) => ({ ...current, amount: Number(event.target.value) || 0 }))}
                 disabled={saving}
+                className="financial-value"
               />
             </div>
             <div className="space-y-2">
-              <Label>Periodicidade</Label>
+              <Label htmlFor="limit-period">Periodicidade</Label>
               <Select
                 value={values.period}
                 onValueChange={(value) => setValues((current) => ({ ...current, period: value as RecurrencePeriod }))}
                 disabled={saving}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="limit-period"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(periodLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
                 </SelectContent>
@@ -122,7 +123,7 @@ const LimitDialog = ({ open, onOpenChange, currency, categories, limit, saving =
             />
           </div>
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-          <DialogFooter>
+          <DialogFooter className="border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancelar
             </Button>

@@ -31,6 +31,8 @@ import {
 import { mergeSpacesWithMemberships, spacesQueryKeys } from "@/hooks/useSpacesV2";
 import AcceptInvitation from "@/pages/AcceptInvitation";
 
+const groupsSource = readFileSync(resolve(process.cwd(), "src/pages/DashboardGrupos.tsx"), "utf8");
+
 const renderInvitation = (path: string) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -151,6 +153,15 @@ describe("household spaces and invitations V2", () => {
     await waitFor(() => expect(sessionStorage.getItem("organizze.pendingInvitationToken")).toBe("secret-token"));
   });
 
+  it("offers a public exit without consuming a pending invitation", async () => {
+    renderInvitation("/convite?token=secret-token");
+
+    const back = screen.getByRole("link", { name: /voltar ao início/i });
+    expect(back).toHaveAttribute("href", "/");
+    expect(testState.rpc).not.toHaveBeenCalled();
+    await waitFor(() => expect(sessionStorage.getItem("organizze.pendingInvitationToken")).toBe("secret-token"));
+  });
+
   it("presents an elapsed pending invitation as expired", () => {
     expect(effectiveInvitationStatus({ status: "pending", expires_at: "2026-08-19T12:00:00.000Z" }, new Date("2026-08-20T12:00:00.000Z"))).toBe("expired");
     expect(effectiveInvitationStatus({ status: "revoked", expires_at: "2026-08-19T12:00:00.000Z" }, new Date("2026-08-20T12:00:00.000Z"))).toBe("revoked");
@@ -179,5 +190,20 @@ describe("household spaces and invitations V2", () => {
   it("registers the invitation acceptance route", () => {
     const app = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
     expect(app).toMatch(/path="\/convite"\s+element={<AcceptInvitation\s*\/>}/);
+  });
+
+  it("keeps the shared-space hooks and mutation callbacks on the page", () => {
+    expect(groupsSource).toContain("useCreateSpaceV2()");
+    expect(groupsSource).toContain("useCreateSpaceInvitationV2()");
+    expect(groupsSource).toContain("useRevokeSpaceInvitationV2()");
+    expect(groupsSource).toContain("useUpdateSpaceMemberRoleV2()");
+    expect(groupsSource).toContain("financial.selectSpace(space.id)");
+    expect(groupsSource).toContain("financial.selectSpace(value)");
+  });
+
+  it("keeps owner and administrator restrictions delegated to canManageHousehold", () => {
+    expect(groupsSource).toContain("canManageHousehold(selectedSpace?.role)");
+    expect(groupsSource).toContain('member.role !== "owner"');
+    expect(groupsSource).toContain("effectiveInvitationStatus(invitation)");
   });
 });

@@ -55,6 +55,14 @@ const invitationStatusLabels: Record<Invitation["status"], string> = {
   revoked: "Revogado",
 };
 
+const invitationStatusTone: Record<Invitation["status"], string> = {
+  pending: "border-financial-warning/40 text-financial-warning",
+  accepted: "border-financial-income/40 text-financial-income",
+  declined: "border-border text-muted-foreground",
+  expired: "border-financial-expense/35 text-financial-expense",
+  revoked: "border-border text-muted-foreground",
+};
+
 const memberInitials = (userId: string, isCurrentUser: boolean) =>
   isCurrentUser ? "EU" : userId.replace(/-/g, "").slice(0, 2).toUpperCase();
 
@@ -161,8 +169,15 @@ const DashboardGrupos = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Partilhar e automatizar" title="Espaços partilhados" description="Gere quem participa nos teus orçamentos pessoais e familiares." actions={familyLimitReached ? <Button asChild variant="outline"><Link to="/dashboard/assinatura">Desbloquear mais espaços</Link></Button> : <Button className="gap-2" onClick={() => setSpaceDialogOpen(true)}><Plus size={16} /> Novo espaço</Button>} />
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        eyebrow="Partilhar e automatizar"
+        title="Espaços partilhados"
+        description="Gere quem participa nos teus orçamentos pessoais e familiares."
+        actions={familyLimitReached
+          ? <Button asChild variant="outline"><Link to="/dashboard/assinatura">Desbloquear mais espaços</Link></Button>
+          : <Button className="gap-2" onClick={() => setSpaceDialogOpen(true)}><Plus size={16} /> Novo espaço</Button>}
+      />
 
       {!selectedSpace ? (
         <DashboardCard>
@@ -174,8 +189,11 @@ const DashboardGrupos = () => {
         </DashboardCard>
       ) : (
         <>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Label htmlFor="space-selector" className="shrink-0 text-sm">Espaço ativo</Label>
+          <div className="flex min-w-0 flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <Label htmlFor="space-selector" className="font-mono text-label uppercase text-muted-foreground">Espaço em gestão</Label>
+              <p className="mt-1 text-body-small text-muted-foreground">A seleção também atualiza o espaço financeiro ativo.</p>
+            </div>
             <Select value={selectedSpace.id} onValueChange={(value) => {
               setSelectedSpaceId(value);
               financial.selectSpace(value);
@@ -194,16 +212,16 @@ const DashboardGrupos = () => {
             </Select>
           </div>
 
-          <DashboardCard>
-            <div className="space-y-5">
-              <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <DashboardCard noPadding>
+            <div>
+              <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <div className="surface-quiet flex h-10 w-10 shrink-0 items-center justify-center text-intelligence">
                     {selectedSpace.kind === "family" ? <Users size={21} /> : <Home size={21} />}
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{selectedSpace.name}</h3>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-panel-title text-foreground">{selectedSpace.name}</h2>
+                    <p className="mt-1 text-body-small text-muted-foreground">
                       {selectedSpace.kind === "family" ? "Espaço familiar" : "Espaço pessoal"} · {roleLabels[selectedSpace.role]}
                     </p>
                   </div>
@@ -218,10 +236,10 @@ const DashboardGrupos = () => {
                 )}
               </div>
 
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-sm font-semibold">Membros</h4>
-                  <span className="text-xs text-muted-foreground">{membersQuery.data?.length ?? 0} no total</span>
+              <div className="min-w-0 px-4 py-4 sm:px-5">
+                <div className="flex items-center justify-between gap-3 pb-2">
+                  <h3 className="font-mono text-label uppercase text-muted-foreground">Membros</h3>
+                  <span className="text-body-small text-muted-foreground">{membersQuery.data?.length ?? 0} no total</span>
                 </div>
                 {membersQuery.isLoading ? (
                   <p className="py-6 text-sm text-muted-foreground">A carregar membros...</p>
@@ -231,19 +249,19 @@ const DashboardGrupos = () => {
                     <Button size="sm" variant="outline" onClick={() => void membersQuery.refetch()}>Tentar novamente</Button>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border rounded-lg border border-border">
+                  <div className="divide-y divide-border border-t border-border">
                     {(membersQuery.data ?? []).map((member) => {
                       const isCurrentUser = member.user_id === user?.id;
                       const editable = canManage && member.role !== "owner";
                       return (
-                        <div key={member.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div key={member.id} className="flex min-w-0 flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                            <div className="surface-quiet flex h-9 w-9 shrink-0 items-center justify-center font-mono text-label font-semibold text-foreground">
                               {memberInitials(member.user_id, isCurrentUser)}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium">{isCurrentUser ? "Você" : member.display_name || `Membro ${member.user_id.slice(0, 8)}`}</p>
-                              <p className="text-xs text-muted-foreground">Desde {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium" }).format(new Date(member.joined_at))}</p>
+                              <p className="truncate text-body-small font-semibold text-foreground">{isCurrentUser ? "Você" : member.display_name || `Membro ${member.user_id.slice(0, 8)}`}</p>
+                              <p className="mt-0.5 text-label text-muted-foreground">Desde {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium" }).format(new Date(member.joined_at))}</p>
                             </div>
                           </div>
                           {editable ? (
@@ -270,7 +288,7 @@ const DashboardGrupos = () => {
                               </SelectContent>
                             </Select>
                           ) : (
-                            <Badge variant="secondary" className="w-fit gap-1.5">
+                            <Badge variant="outline" className="w-fit gap-1.5 text-muted-foreground">
                               {member.role === "owner" && <ShieldCheck size={13} />}{roleLabels[member.role]}
                             </Badge>
                           )}
@@ -284,30 +302,30 @@ const DashboardGrupos = () => {
           </DashboardCard>
 
           {canManage && (
-            <DashboardCard title="Convites">
+            <DashboardCard title="Convites" headingLevel={2} description="Acessos emitidos para este espaço" noPadding>
               {invitationsQuery.isLoading ? (
-                <p className="py-4 text-sm text-muted-foreground">A carregar convites...</p>
+                <p className="px-5 py-6 text-body-small text-muted-foreground">A carregar convites...</p>
               ) : invitationsQuery.isError ? (
-                <div className="flex items-center justify-between gap-3 py-3">
+                <div className="flex items-center justify-between gap-3 px-5 py-4">
                   <p className="text-sm text-destructive">Não foi possível carregar os convites.</p>
                   <Button size="sm" variant="outline" onClick={() => void invitationsQuery.refetch()}>Tentar novamente</Button>
                 </div>
               ) : (invitationsQuery.data ?? []).length === 0 ? (
                 <EmptyState icon={<Mail size={42} />} message="Ainda não existem convites neste espaço." />
               ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border px-4 sm:px-5">
                   {(invitationsQuery.data ?? []).map((invitation) => {
                     const status = effectiveInvitationStatus(invitation);
                     return (
-                    <div key={invitation.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={invitation.id} className="flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{invitation.email}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="truncate text-body-small font-semibold text-foreground">{invitation.email}</p>
+                        <p className="mt-1 text-label text-muted-foreground">
                           {roleLabels[invitation.role]} · expira em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium" }).format(new Date(invitation.expires_at))}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={status === "pending" ? "default" : "secondary"}>
+                        <Badge variant="outline" className={invitationStatusTone[status]}>
                           {invitationStatusLabels[status]}
                         </Badge>
                         {status === "pending" && (
@@ -318,7 +336,7 @@ const DashboardGrupos = () => {
                             aria-label={`Revogar convite de ${invitation.email}`}
                             onClick={() => setInvitationToRevoke(invitation)}
                           >
-                            <Trash2 size={16} className="text-destructive" />
+                            <Trash2 size={16} className="text-financial-expense" />
                           </Button>
                         )}
                       </div>

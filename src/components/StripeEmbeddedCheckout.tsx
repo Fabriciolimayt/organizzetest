@@ -20,7 +20,7 @@ export function StripeEmbeddedCheckout({ priceId, quantity, customerEmail, userI
   };
 
   return (
-    <div id="checkout">
+    <div id="checkout" className="min-w-0 overflow-hidden rounded-md bg-card" aria-label="Checkout Stripe">
       <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
