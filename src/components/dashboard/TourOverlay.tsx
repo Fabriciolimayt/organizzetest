@@ -1,11 +1,10 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface TourStep {
   title: string;
   body: string;
-  emoji?: string;
   /** CSS selector to highlight. If omitted, the popover is centered. */
   target?: string;
 }
@@ -26,10 +25,24 @@ interface Rect {
 const PADDING = 8;
 const POPOVER_W = 320;
 const POPOVER_H = 200;
+const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
 
 const TourOverlay = ({ steps, open, onClose }: Props) => {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const descriptionId = useId();
 
   const step = steps[index];
 
@@ -48,6 +61,49 @@ const TourOverlay = ({ steps, open, onClose }: Props) => {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        .filter((element) => element.getAttribute("aria-hidden") !== "true" && !element.hasAttribute("hidden"));
+      const first = focusable[0];
+      const last = focusable.at(-1);
+
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [open, onClose]);
+
   // Measure target and recompute on resize/scroll
   useLayoutEffect(() => {
     if (!open || !step) return;
@@ -61,7 +117,7 @@ const TourOverlay = ({ steps, open, onClose }: Props) => {
         setRect(null);
         return;
       }
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
       // Wait a frame so scrollIntoView finishes before measuring
       requestAnimationFrame(() => {
         const r = el.getBoundingClientRect();
@@ -108,18 +164,27 @@ const TourOverlay = ({ steps, open, onClose }: Props) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-[100]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      tabIndex={-1}
+    >
       {/* Dim layer with cutout */}
       {rect ? (
         <>
           {/* Four mask rects around the target */}
-          <div className="fixed bg-black/60" style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top) }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height }} />
-          <div className="fixed bg-black/60" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top) }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height }} />
+          <div aria-hidden="true" className="fixed bg-black/70" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }} />
           {/* Highlight ring */}
           <div
-            className="fixed rounded-xl ring-4 ring-primary pointer-events-none transition-all"
+            aria-hidden="true"
+            className="pointer-events-none fixed rounded-md ring-2 ring-intelligence"
             style={{
               top: rect.top,
               left: rect.left,
@@ -130,66 +195,73 @@ const TourOverlay = ({ steps, open, onClose }: Props) => {
           />
         </>
       ) : (
-        <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+        <div aria-hidden="true" className="fixed inset-0 bg-black/70" onClick={onClose} />
       )}
 
       {/* Popover */}
       <div
-        className="fixed bg-card rounded-xl shadow-2xl border border-border p-5 animate-in fade-in zoom-in-95"
+        className="fixed rounded-md border border-border bg-card p-5 shadow-menu animate-in fade-in duration-200"
         style={popStyle}
       >
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-primary">
-            {index + 1} / {steps.length}
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <span className="financial-value text-label font-semibold text-intelligence">
+            Etapa {index + 1} de {steps.length}
           </span>
           <button
+            ref={closeButtonRef}
+            type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="focus-ring interactive-control flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Fechar tour"
           >
-            <X size={16} />
+            <X aria-hidden="true" size={16} />
           </button>
         </div>
 
-        <h3 className="text-base font-bold text-foreground mb-1.5 flex items-center gap-2">
-          {step.emoji && <span>{step.emoji}</span>}
+        <h3 id={titleId} className="text-base font-semibold text-foreground">
           {step.title}
         </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+        <p id={descriptionId} className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {step.body}
         </p>
 
-        {/* Dots */}
-        <div className="flex items-center justify-center gap-1.5 mb-4">
+        <div
+          aria-label={`Progresso do tour: etapa ${index + 1} de ${steps.length}`}
+          className="my-5 flex items-center gap-1.5"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={steps.length}
+          aria-valuenow={index + 1}
+        >
           {steps.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index ? "w-5 bg-primary" : "w-1.5 bg-muted"
-              }`}
+              aria-hidden="true"
+              className={`h-0.5 flex-1 ${i <= index ? "bg-intelligence" : "bg-muted"}`}
             />
           ))}
         </div>
 
         <div className="flex items-center justify-between gap-3">
           <button
+            type="button"
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={isFirst}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 flex items-center gap-1"
+            className="focus-ring interactive-control flex min-h-11 items-center gap-1 rounded-md px-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
           >
-            <ChevronLeft size={14} /> Anterior
+            <ChevronLeft aria-hidden="true" size={14} /> Anterior
           </button>
           <Button
             size="sm"
             onClick={() => (isLast ? onClose() : setIndex((i) => i + 1))}
-            className="gap-1.5 rounded-full px-4"
+            className="gap-1.5 px-4"
           >
             {isLast ? (
-              <>Feito! 🎉</>
+              <>Concluir</>
             ) : isFirst ? (
-              <>Vamos lá <ChevronRight size={14} /></>
+              <>Vamos lá <ChevronRight aria-hidden="true" size={14} /></>
             ) : (
-              <>Seguinte <ChevronRight size={14} /></>
+              <>Seguinte <ChevronRight aria-hidden="true" size={14} /></>
             )}
           </Button>
         </div>

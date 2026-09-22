@@ -8,13 +8,24 @@ type PageHeaderProps = {
 };
 
 const PageHeader = ({ title, description, eyebrow, actions }: PageHeaderProps) => (
-  <header className="editorial-reveal flex flex-wrap items-end justify-between gap-5 border-b border-foreground pb-6">
-    <div className="min-w-0">
-      {eyebrow && <p className="mb-3 flex items-center gap-3 font-mono text-[11px] font-semibold uppercase text-data-blue"><span className="h-2 w-2 bg-data-blue" />{eyebrow}</p>}
-      <h1 className="editorial-display max-w-4xl text-4xl font-semibold leading-[0.98] text-foreground sm:text-5xl">{title}</h1>
-      {description && <p className="mt-3 max-w-2xl text-body text-muted-foreground">{description}</p>}
+  <header className="product-page-header editorial-reveal flex min-w-0 flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+    <div className="min-w-0 flex-1">
+      {eyebrow && (
+        <p className="product-page-header__eyebrow mb-1.5 flex items-center gap-2 font-mono text-label uppercase text-data-blue">
+          <span className="h-px w-4 bg-data-blue" aria-hidden="true" />
+          {eyebrow}
+        </p>
+      )}
+      <h1 className="editorial-display max-w-4xl break-words text-page-title text-foreground">
+        {title}
+      </h1>
+      {description && (
+        <p className="product-page-header__description mt-1.5 max-w-2xl text-body-small text-muted-foreground">
+          {description}
+        </p>
+      )}
     </div>
-    {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    {actions && <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
   </header>
 );
 

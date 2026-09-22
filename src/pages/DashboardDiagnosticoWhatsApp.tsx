@@ -67,8 +67,8 @@ const DashboardDiagnosticoWhatsApp = () => {
       const { data: res, error } = await supabase.functions.invoke("whatsapp-diagnostico", { method: "POST" });
       if (error) throw error;
       const result = res as DiagnosticTestResponse | null;
-      if (result?.ok) toast({ title: "✅ Mensagem de teste enviada" });
-      else toast({ title: "❌ Falhou ao enviar", description: `Status ${result?.status}`, variant: "destructive" });
+      if (result?.ok) toast({ title: "Mensagem de teste enviada" });
+      else toast({ title: "Falhou ao enviar", description: `Status ${result?.status}`, variant: "destructive" });
       load();
     } catch (e: unknown) {
       toast({ title: "Erro", description: getErrorMessage(e), variant: "destructive" });
@@ -78,78 +78,102 @@ const DashboardDiagnosticoWhatsApp = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <PageHeader eyebrow="Partilhar e automatizar" title="Diagnóstico WhatsApp" description="Estado da integração e últimos eventos do webhook." actions={<Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Atualizar</Button>} />
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        eyebrow="Partilhar e automatizar"
+        title="Diagnóstico WhatsApp"
+        description="Estado técnico da integração e últimos eventos recebidos pelo webhook."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="gap-2">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" /> Atualizar
+          </Button>
+        }
+      />
 
-      {/* Secrets */}
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-bold mb-3">Configuração de secrets</h2>
-        <div className="grid sm:grid-cols-2 gap-2">
-          {data
-            ? Object.entries(data.secrets).map(([k, ok]) => (
-                <div key={k} className="flex items-center gap-2 p-2 rounded-lg bg-secondary">
-                  {ok ? <CheckCircle2 size={16} className="text-primary" /> : <XCircle size={16} className="text-destructive" />}
-                  <div className="text-sm">
-                    <div className="font-medium">{SECRET_LABELS[k] ?? k}</div>
-                    <code className="text-xs text-muted-foreground">{k}</code>
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,19rem)]">
+        <section className="functional-panel min-w-0" aria-labelledby="webhook-events-title">
+          <header className="border-b border-border px-4 py-4 sm:px-5">
+            <p className="font-mono text-label uppercase text-muted-foreground">Atividade recebida</p>
+            <h2 id="webhook-events-title" className="mt-1 text-panel-title text-foreground">Últimos eventos do webhook</h2>
+          </header>
+          {data?.events.length ? (
+            <ul className="divide-y divide-border px-4 sm:px-5">
+              {data.events.map((ev) => (
+                <li key={ev.id} className="flex min-w-0 items-start gap-3 py-4">
+                  <span className={`surface-quiet flex size-9 shrink-0 items-center justify-center ${ev.success ? "text-financial-income" : "text-financial-expense"}`} aria-hidden="true">
+                    {ev.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      <code className="break-all font-mono text-body-small font-semibold text-foreground">{ev.event_type}</code>
+                      <span className={`text-label font-semibold ${ev.success ? "text-financial-income" : "text-financial-expense"}`}>
+                        {ev.success ? "Processado" : "Falhou"}
+                      </span>
+                      <time className="ml-auto text-label text-muted-foreground" dateTime={ev.created_at}>
+                        {new Date(ev.created_at).toLocaleString("pt-PT")}
+                      </time>
+                    </div>
+                    {ev.phone && <p className="financial-value mt-1 text-label text-muted-foreground">+{ev.phone}</p>}
+                    {ev.summary && <p className="mt-2 text-body-small text-foreground">{ev.summary}</p>}
+                    {ev.error && <p className="mt-2 break-words text-body-small text-financial-expense">{ev.error}</p>}
                   </div>
-                </div>
-              ))
-            : <p className="text-sm text-muted-foreground">A carregar...</p>}
-        </div>
-      </section>
-
-      {/* Linked number + test */}
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-bold mb-3">Número ligado</h2>
-        {data?.linkedPhone ? (
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="text-lg font-mono">+{data.linkedPhone}</div>
-              <div className="text-xs text-muted-foreground">Ligado em {new Date(data.linkedAt!).toLocaleString("pt-PT")}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <p className="text-body-small font-semibold text-foreground">Ainda sem eventos</p>
+              <p className="mt-1 text-body-small text-muted-foreground">Envia uma mensagem para o bot ou configura o webhook na Datafy.</p>
             </div>
-            <Button onClick={sendTest} disabled={sending} className="gap-2">
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Enviar mensagem de teste
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <AlertCircle size={16} /> Nenhum número ligado ainda. Conclui o onboarding para ligar o teu WhatsApp.
-          </div>
-        )}
-      </section>
+          )}
+        </section>
 
-      {/* Events */}
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-bold mb-3">Últimos eventos do webhook</h2>
-        {data?.events.length ? (
-          <ul className="divide-y divide-border">
-            {data.events.map((ev) => (
-              <li key={ev.id} className="py-3 flex items-start gap-3">
-                {ev.success
-                  ? <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
-                  : <XCircle size={16} className="text-destructive mt-0.5 shrink-0" />}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <code className="text-xs font-mono font-semibold">{ev.event_type}</code>
-                    {ev.phone && <span className="text-xs text-muted-foreground">+{ev.phone}</span>}
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {new Date(ev.created_at).toLocaleString("pt-PT")}
-                    </span>
-                  </div>
-                  {ev.summary && <p className="text-sm mt-0.5">{ev.summary}</p>}
-                  {ev.error && <p className="text-xs text-destructive mt-0.5 break-words">{ev.error}</p>}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Ainda sem eventos. Envia uma mensagem para o bot ou configura o webhook na Datafy.
-          </p>
-        )}
-      </section>
+        <aside className="min-w-0 space-y-4" aria-label="Estado técnico da integração">
+          <section className="functional-panel min-w-0 p-5" aria-labelledby="linked-number-title">
+            <p className="font-mono text-label uppercase text-muted-foreground">Ligação</p>
+            <h2 id="linked-number-title" className="mt-1 text-compact-title text-foreground">Número ligado</h2>
+            {data?.linkedPhone ? (
+              <div className="mt-4 min-w-0">
+                <div className="flex items-center gap-2 text-body-small font-semibold text-financial-income"><CheckCircle2 size={15} aria-hidden="true" /> Ativo</div>
+                <p className="financial-value mt-2 [overflow-wrap:anywhere] text-base font-semibold text-foreground">+{data.linkedPhone}</p>
+                <p className="mt-1 text-label text-muted-foreground">Ligado em {new Date(data.linkedAt!).toLocaleString("pt-PT")}</p>
+                <Button onClick={sendTest} disabled={sending} className="mt-4 w-full gap-2">
+                  {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Enviar teste
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-start gap-2 text-body-small text-financial-warning">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>Nenhum número ligado. Conclui o onboarding do WhatsApp.</span>
+              </div>
+            )}
+          </section>
+
+          <section className="functional-panel min-w-0 p-5" aria-labelledby="secrets-title">
+            <p className="font-mono text-label uppercase text-muted-foreground">Infraestrutura</p>
+            <h2 id="secrets-title" className="mt-1 text-compact-title text-foreground">Configuração de secrets</h2>
+            <div className="mt-4 divide-y divide-border border-y border-border">
+              {data
+                ? Object.entries(data.secrets).map(([key, ok]) => (
+                    <div key={key} className="flex min-w-0 items-start gap-2 py-3">
+                      {ok
+                        ? <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-financial-income" aria-hidden="true" />
+                        : <XCircle size={15} className="mt-0.5 shrink-0 text-financial-expense" aria-hidden="true" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-body-small font-medium text-foreground">{SECRET_LABELS[key] ?? key}</p>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                          <code className="break-all font-mono text-label text-muted-foreground">{key}</code>
+                          <span className={`text-label font-semibold ${ok ? "text-financial-income" : "text-financial-expense"}`}>{ok ? "Configurado" : "Em falta"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                : <p className="py-4 text-body-small text-muted-foreground">A carregar...</p>}
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 };

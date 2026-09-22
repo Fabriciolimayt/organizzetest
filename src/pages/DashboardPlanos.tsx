@@ -105,27 +105,55 @@ const DashboardPlanos = () => {
       {plans.length === 0 ? (
         <DashboardCard><EmptyState icon={<WalletCards size={48} />} message="Ainda não existe nenhum plano de orçamento neste espaço." action={canWrite ? <Button onClick={openCreate} disabled={mutationPending}>Criar primeiro plano</Button> : undefined} /></DashboardCard>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <DashboardCard key={plan.id} className={plan.is_active ? "ring-2 ring-primary" : ""}>
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><WalletCards size={20} /></div>
-                  {plan.is_active && <span className="flex items-center gap-1 text-xs font-semibold text-primary"><Check size={13} /> Ativo</span>}
+        <DashboardCard title="Planos disponíveis" headingLevel={2} description={`${plans.length} cenário${plans.length === 1 ? "" : "s"} neste espaço`} noPadding>
+          <div className="divide-y divide-border md:hidden">
+            {plans.map((plan) => (
+              <article key={plan.id} className="space-y-3 p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="surface-quiet flex size-9 shrink-0 items-center justify-center text-intelligence"><WalletCards size={17} /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="break-words text-compact-title text-foreground">{plan.name}</h3>
+                      {plan.is_active && <span className="flex items-center gap-1 text-label font-semibold text-intelligence"><Check size={13} /> Ativo</span>}
+                    </div>
+                    <p className="mt-1 text-body-small text-muted-foreground">{formatPeriod(plan.period_start, plan.period_end, data.locale)}</p>
+                  </div>
+                  <p className="financial-value shrink-0 text-body-small font-semibold text-foreground">{formatCurrency(plan.expected_income, data.currency, data.locale)}</p>
                 </div>
-                <div className="space-y-1"><h3 className="font-bold">{plan.name}</h3><p className="text-sm text-muted-foreground">{formatCurrency(plan.expected_income, data.currency, data.locale)}</p><p className="text-xs text-muted-foreground">{formatPeriod(plan.period_start, plan.period_end, data.locale)}</p><p className="text-xs text-muted-foreground">{plan.allocations.length} categorias definidas</p></div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button size="sm" variant={plan.is_active ? "outline" : "default"} onClick={() => activatePlan.mutate(plan, { onError: (reason) => showError("ativar o plano", reason) })} disabled={!canWrite || mutationPending || plan.is_active}>{plan.is_active ? "Em uso" : "Ativar"}</Button>
-                  <Button size="sm" variant="outline" onClick={() => duplicatePlan.mutate(plan, { onError: (reason) => showError("duplicar o plano", reason), onSuccess: () => toast({ title: "Plano duplicado" }) })} disabled={!canWrite || mutationPending || planLimitReached}><Copy size={14} /> Duplicar</Button>
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                  <span className="text-body-small text-muted-foreground">{plan.allocations.length} categorias definidas</span>
+                  <PlanActions
+                    plan={plan}
+                    canWrite={canWrite}
+                    mutationPending={mutationPending}
+                    planLimitReached={planLimitReached}
+                    onActivate={() => activatePlan.mutate(plan, { onError: (reason) => showError("ativar o plano", reason) })}
+                    onDuplicate={() => duplicatePlan.mutate(plan, { onError: (reason) => showError("duplicar o plano", reason), onSuccess: () => toast({ title: "Plano duplicado" }) })}
+                    onEdit={() => openEdit(plan)}
+                    onDelete={() => setPlanToDelete(plan)}
+                  />
                 </div>
-                <div className="flex justify-end gap-1 border-t border-border pt-3">
-                  <Button size="icon" variant="ghost" aria-label={`Editar ${plan.name}`} onClick={() => openEdit(plan)} disabled={!canWrite || mutationPending}><Pencil size={16} /></Button>
-                  <Button size="icon" variant="ghost" aria-label={`Eliminar ${plan.name}`} onClick={() => setPlanToDelete(plan)} disabled={!canWrite || mutationPending}><Trash2 size={16} className="text-destructive" /></Button>
-                </div>
-              </div>
-            </DashboardCard>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[780px] border-collapse text-left" aria-label="Planos de orçamento">
+              <thead><tr className="border-b border-border bg-muted/20 font-mono text-label uppercase text-muted-foreground"><th className="px-5 py-3 font-medium" scope="col">Plano</th><th className="px-4 py-3 font-medium" scope="col">Período</th><th className="px-4 py-3 text-right font-medium" scope="col">Rendimento</th><th className="px-4 py-3 text-right font-medium" scope="col">Categorias</th><th className="px-4 py-3 font-medium" scope="col">Estado</th><th className="px-4 py-3 text-right font-medium" scope="col">Ações</th></tr></thead>
+              <tbody className="divide-y divide-border">
+                {plans.map((plan) => (
+                  <tr key={plan.id} className="hover:bg-muted/20">
+                    <td className="max-w-xs px-5 py-3 text-body-small font-semibold text-foreground">{plan.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-body-small text-muted-foreground">{formatPeriod(plan.period_start, plan.period_end, data.locale)}</td>
+                    <td className="financial-value whitespace-nowrap px-4 py-3 text-right text-body-small text-foreground">{formatCurrency(plan.expected_income, data.currency, data.locale)}</td>
+                    <td className="px-4 py-3 text-right text-body-small text-muted-foreground">{plan.allocations.length}</td>
+                    <td className="px-4 py-3 text-body-small">{plan.is_active ? <span className="inline-flex items-center gap-1 font-semibold text-intelligence"><Check size={13} /> Ativo</span> : <span className="text-muted-foreground">Inativo</span>}</td>
+                    <td className="px-4 py-2"><PlanActions plan={plan} canWrite={canWrite} mutationPending={mutationPending} planLimitReached={planLimitReached} onActivate={() => activatePlan.mutate(plan, { onError: (reason) => showError("ativar o plano", reason) })} onDuplicate={() => duplicatePlan.mutate(plan, { onError: (reason) => showError("duplicar o plano", reason), onSuccess: () => toast({ title: "Plano duplicado" }) })} onEdit={() => openEdit(plan)} onDelete={() => setPlanToDelete(plan)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DashboardCard>
       )}
       <PlanDialog open={dialogOpen} onOpenChange={setDialogOpen} currency={data.currency} plan={dialogPlan} saving={createPlan.isPending || updatePlan.isPending} onSubmit={submitPlan} />
       <AlertDialog open={Boolean(planToDelete)} onOpenChange={(open) => !open && setPlanToDelete(null)}>
@@ -144,5 +172,16 @@ const DashboardPlanos = () => {
     </div>
   );
 };
+
+function PlanActions({ plan, canWrite, mutationPending, planLimitReached, onActivate, onDuplicate, onEdit, onDelete }: { plan: BudgetPlanWithAllocations; canWrite: boolean; mutationPending: boolean; planLimitReached: boolean; onActivate: () => void; onDuplicate: () => void; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex shrink-0 justify-end gap-1">
+      <Button size="sm" variant={plan.is_active ? "outline" : "default"} onClick={onActivate} disabled={!canWrite || mutationPending || plan.is_active}>{plan.is_active ? "Em uso" : "Ativar"}</Button>
+      <Button size="icon" variant="ghost" aria-label={`Duplicar ${plan.name}`} title="Duplicar plano" onClick={onDuplicate} disabled={!canWrite || mutationPending || planLimitReached}><Copy size={15} /></Button>
+      <Button size="icon" variant="ghost" aria-label={`Editar ${plan.name}`} title="Editar plano" onClick={onEdit} disabled={!canWrite || mutationPending}><Pencil size={15} /></Button>
+      <Button size="icon" variant="ghost" className="hover:bg-financial-expense/10" aria-label={`Eliminar ${plan.name}`} title="Eliminar plano" onClick={onDelete} disabled={!canWrite || mutationPending}><Trash2 size={15} className="text-financial-expense" /></Button>
+    </div>
+  );
+}
 
 export default DashboardPlanos;

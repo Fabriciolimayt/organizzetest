@@ -49,6 +49,12 @@ describe("WhatsApp onboarding app_v2 contract", () => {
     expect(source).toContain("monthly_report_opt_in: true");
     expect(source).toContain("Europe/Lisbon");
     expect(source).toContain("verification.expiresAt");
+    expect(source).toContain("const id = setInterval(tick, 3000)");
+    expect(source).toContain("return () => {");
+    expect(source).toContain("stop = true");
+    expect(source).toContain("clearInterval(id)");
+    expect(source).toContain("if (redirectTimeout) clearTimeout(redirectTimeout)");
+    expect(source).toContain('redirectTimeout = setTimeout(() => navigate("/dashboard"), 600)');
 
     expect(source).not.toContain('.from("whatsapp_links")');
     expect(source).not.toContain("verify_code");

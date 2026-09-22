@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import Logo from "@/components/Logo";
 import InputField from "@/components/InputField";
@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { PUBLIC_SITE_URL } from "@/lib/public-site";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LoaderCircle, LockKeyhole } from "lucide-react";
+import "./auth-paper.css";
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24">
@@ -28,14 +31,15 @@ const loginSchema = signupSchema;
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-const Auth = () => {
+const Auth = ({ initialMode = "login" }: { initialMode?: "login" | "signup" }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const nextParam = new URLSearchParams(location.search).get("next");
   const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
@@ -97,45 +101,53 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="surface-panel w-full max-w-md p-8 flex flex-col items-center gap-6">
-        <Logo />
-        <h1 className="text-2xl font-bold text-foreground">
-          {mode === "signup" ? "Cria a tua conta" : "Bem-vindo de volta"}
-        </h1>
+    <div className="auth-paper entry-editorial">
+      <picture className="auth-paper__art">
+        <source media="(max-width: 899px)" srcSet="/images/auth/organizze-ledger-mobile.webp" />
+        <img src="/images/auth/organizze-ledger.webp" width="1600" height="900" alt="" {...{ fetchpriority: "high" }} />
+      </picture>
 
-        <div className="w-full">
-          <SocialLoginButton icon={<GoogleIcon />} onClick={handleGoogle} disabled={busy}>
-            Continuar com Google
-          </SocialLoginButton>
+      <header className="auth-paper__header">
+        <a href={PUBLIC_SITE_URL} rel="noreferrer" className="auth-paper__brand" aria-label="Organizze: página inicial"><Logo white /></a>
+        <a href={PUBLIC_SITE_URL} rel="noreferrer" className="auth-paper__back" aria-label="Voltar ao início" title="Voltar ao início"><ArrowLeft size={16} aria-hidden="true" /><span>Voltar ao início</span></a>
+      </header>
+
+      <main className="auth-paper__main">
+        <div className="auth-paper__form-wrap">
+          <div className="auth-paper__intro">
+            <p className="auth-paper__eyebrow">O teu espaço financeiro</p>
+            <h1>{mode === "signup" ? "O teu mês começa aqui." : "Continua de onde paraste."}</h1>
+            <p className="auth-paper__description">
+              {mode === "signup" ? "Cria a tua conta. Dá um lugar a cada despesa." : "Todas as despesas. Um mês mais claro."}
+            </p>
+          </div>
+
+          <form className="auth-paper__form" onSubmit={handleSubmit} aria-label={mode === "signup" ? "Criar conta" : "Entrar"} aria-busy={busy}>
+            <InputField label="E-mail" type="email" name="email" autoComplete="email" placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <div className="auth-paper__password">
+              <InputField id="auth-password" label="Senha" name="password" type={passwordVisible ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="8 caracteres ou mais" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" className="auth-paper__visibility" aria-label={passwordVisible ? "Ocultar senha" : "Mostrar senha"} aria-controls="auth-password" aria-pressed={passwordVisible} title={passwordVisible ? "Ocultar senha" : "Mostrar senha"} onClick={() => setPasswordVisible(!passwordVisible)}>
+                {passwordVisible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
+            <Button type="submit" disabled={busy} size="lg" className="auth-paper__submit">
+              {busy ? <><LoaderCircle className="auth-paper__spinner" aria-hidden="true" /> A processar...</> : <>{mode === "signup" ? "Criar conta" : "Entrar"}<ArrowRight aria-hidden="true" /></>}
+            </Button>
+          </form>
+
+          <div className="auth-paper__divider"><span />ou continua com<span /></div>
+          <div className="auth-paper__social">
+            <SocialLoginButton type="button" icon={<GoogleIcon />} onClick={handleGoogle} disabled={busy}>Continuar com Google</SocialLoginButton>
+          </div>
+
+          <p className="auth-paper__switch">
+            {mode === "signup" ? "Já tens conta? " : "Ainda não tens conta? "}
+            <button type="button" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Entrar" : "Criar conta"}</button>
+          </p>
         </div>
+      </main>
 
-        <div className="w-full flex items-center gap-4">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-sm text-muted-foreground">ou</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <form className="w-full flex flex-col gap-4" onSubmit={handleSubmit}>
-          <InputField label="E-mail" type="email" placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <InputField label="Senha" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <Button disabled={busy} size="lg" className="w-full text-base py-6">
-            {busy ? "A processar…" : mode === "signup" ? "Criar conta" : "Entrar"}
-          </Button>
-        </form>
-
-        <p className="text-sm text-muted-foreground">
-          {mode === "signup" ? "Já tens conta? " : "Sem conta? "}
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signup" ? "login" : "signup")}
-            className="text-primary hover:underline font-medium"
-          >
-            {mode === "signup" ? "Entrar" : "Criar conta"}
-          </button>
-        </p>
-        <Link to="/" className="text-xs text-muted-foreground hover:underline">← Voltar à página inicial</Link>
-      </div>
+      <footer className="auth-paper__footer"><LockKeyhole size={14} aria-hidden="true" /><span>Privado por espaço financeiro</span></footer>
     </div>
   );
 };

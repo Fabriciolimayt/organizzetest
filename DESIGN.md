@@ -1,189 +1,314 @@
-# Organizze Design System
+# Organizze Design System - Intelligence In Silence
 
-## 1. Atmosphere & Identity
+## Editorial Product Edition (2026-09-21)
 
-Organizze feels like an independent financial journal edited in real time: precise enough for serious decisions, vivid enough to make the numbers feel consequential, and human enough for daily use. The signature is **neo-editorial finance**: mineral paper, near-black green ink, oversized financial figures, electric-blue annotations, coral risk markers, and ruled ledger lines.
+Approved direction: dark navigation, mineral-white financial workspace. This
+section supersedes the older dark-product and paper-cut auth visual contracts
+below, which remain as history. Behavior and data contracts remain immutable.
+The source of visual truth is the published Organizze Site and its DESIGN.md,
+not a new external brand. Carry its editorial typography, fine rules, original
+ledger imagery, meaningful ice/coral/champagne accents and restrained motion
+into a daily-use application, without marketing-sized headings or video loops.
 
-The memorable moment is the **editorial balance**: one monumental value crossing the page grid beside a dark monthly-decision panel. The interface must never resemble a trading terminal, crypto product, generic component gallery, or pastel wellness app. It is an authored instrument for understanding household money.
+Audience: people reviewing a month, recording expenses and managing shared
+finances, often on a phone. Primary task is understanding and acting on real
+financial data. Empty/loading/error states never impersonate populated data.
 
-Design references: Mastercard's editorial warmth and confident financial framing, interpreted through Organizze's own color and content; StyleGallery `fixed-sidenav-shell`, `page-grid`, and `main-with-rail` patterns for spatial behavior. The advertised `redesign-skill.md`, `gpt-tasteskill.md`, and local Layer-B files were unavailable in the installed skill package, so the documented router principles and `frontend-design` guidance are the fallback.
+### Product tokens and typography
 
-## 2. Color
+- Canvas mineral #F4F6F6; paper #FFFFFF; ink #182025; secondary #566268;
+  quiet surface #EBEFEF; divider #D4DBDC; input outline #859296.
+- Navigation charcoal #111516; navigation text #F4F6F6; secondary #A7B0B2;
+  active surface #252D2F; navigation divider #30383A; active marker #82DCE3.
+- Primary command charcoal #182025, hover #303B40, white label. Data available
+  #176874, income #246641, expense #A84234, future/warning #816022. Dark
+  financial highlights use #82DCE3/#A8D6BA/#ED998B/#E0C28C with explicit labels.
+- Heading and wordmark: Iowan Old Style / Palatino Linotype / Georgia, regular.
+  Body and controls retain bundled Geist; financial values retain Geist Mono.
+  Page heading 36px, mobile 30px; section 22px; body 15px, secondary 13px,
+  labels 12px; primary metric 36px (30px narrow), support 24px (20px narrow).
+  Zero tracking. No viewport-relative type, animated balances or uppercase prose.
+- Space unit 4px; content gaps 16/24/32; desktop gutters 40px, tablet 24px,
+  narrow 16px. Main width 1360px. Controls 44px minimum, radius 6px. Dialogs
+  and framed tools maximum 8px; unframed data sections and metric strips.
 
-### Palette
+### Shared primitives and layout
 
-| Role | Token | Light | Dark | Usage |
-| --- | --- | --- | --- | --- |
-| Canvas | `--background` | `48 42% 96%` | `160 25% 7%` | Mineral paper canvas |
-| Surface | `--card` | `0 0% 100%` | `150 10% 11%` | Panels, dialogs, menus |
-| Surface quiet | `--muted` | `48 24% 91%` | `160 16% 13%` | Ruled areas, selected rows |
-| Text primary | `--foreground` | `164 32% 10%` | `48 32% 95%` | Ink, headings, financial values |
-| Text secondary | `--muted-foreground` | `164 9% 39%` | `150 7% 66%` | Metadata and supporting copy |
-| Border | `--border` | `164 15% 78%` | `160 10% 24%` | Deliberate ledger rules |
-| Ink green | `--primary` | `158 72% 21%` | `78 88% 66%` | Primary actions, positive guidance |
-| Ink hover | `--primary-hover` | `160 78% 15%` | `78 90% 72%` | Hover and active emphasis |
-| Electric blue | `--data-blue` | `224 88% 57%` | `220 92% 68%` | Income, links, analytical annotation |
-| Data violet | `--data-violet` | `275 69% 50%` | `274 72% 70%` | Goals and future planning |
-| Acid marker | `--marker` | `75 96% 56%` | `75 90% 58%` | Tiny highlights and status markers only |
-| Warning | `--warning` | `35 92% 46%` | `39 88% 64%` | Attention and near-limit states |
-| Destructive / coral | `--destructive` | `8 82% 55%` | `8 86% 67%` | Expenses at risk and destructive actions |
-| Ink panel | `--ink-panel` | `164 36% 9%` | `164 36% 9%` | High-contrast decision surfaces |
-| Success wash | `--success-wash` | `77 66% 86%` | `158 22% 17%` | Positive inline feedback |
-| Warning wash | `--warning-wash` | `38 82% 88%` | `38 24% 18%` | Contextual warnings |
+Retain the current visible side navigation and its route groups, full mobile
+menu and five mobile destinations. StyleGallery fixed-sidenav-shell is the
+spatial contract: https://github.com/changeroa/StyleGallery/blob/main/patterns/viewport-shell/fixed-sidenav-shell.md.
+Desktop navigation stays fixed, #dashboard-main-content owns content scroll,
+and the navigation list separately scrolls only when its own height requires
+it. Preserve 100dvh, min-height:0 and minmax(0,1fr) containment. Mobile keeps
+the dark header/bottom bar and a light financial body. Never hide destinations.
 
-### Rules
+Primitives: editorial Logo; PageHeader with restrained serif title and a wrapping
+action cluster; unframed MetricStrip with ruled columns and first-value emphasis;
+DashboardCard as a flat data section rather than a floating section-card;
+DecisionPanel as a quiet contextual rail; FinancialRow with a consistent icon,
+readable description and tabular amount; existing Button/Input/Select/Tabs;
+light dialogs, popovers, menus and toasts using root-level semantic tokens so
+Radix portals inherit correctly. All retain default, focus, hover, disabled,
+loading, error, selected and destructive states. Validate the existing dev-only
+primitive showcase before reviewing full routes.
 
-- Ink green anchors navigation and primary commands. Electric blue and coral make the palette deliberately multi-note.
-- Acid marker is used only for small highlights, never as a page background or large fill.
-- Financial semantics use text, icons, and labels in addition to color.
-- Category colors are limited to the documented data ramp; no arbitrary rainbow palette.
-- Raw color values belong only in this file and the global token declaration.
-- Both themes must meet WCAG 2.2 AA contrast requirements.
+Auth uses the original Site's optimized ledger poster with the same editorial
+identity, never the obsolete leaf/paper-cut composition. Form stays on opaque
+mineral paper, its fields, providers, mode switch, submit and safe redirects
+unchanged. Onboarding shares the light paper, dark structural header and serif
+title. No added forms, recovery endpoints, route aliases or new auth semantics.
 
-## 3. Typography
+### Motion, accessibility and verification
 
-### Font Stack
+Keep existing state-driven 140/220ms motion, no ambient motion, pinning, video
+or scroll effects in the app. Retain reduced motion. Persistent labels, keyboard
+focus, modal focus restoration and semantic status text are required. Check
+320/375/768/1440/1920px, 200% text, long names/amounts, empty/error/loading,
+forms, tabs, dialogs and navigation. Color is never the only status cue.
 
-- UI: `DM Sans`, `Helvetica Neue`, system sans-serif.
-- Display: `Fraunces`, Georgia, serif, with a restrained optical axis.
-- Financial values and metadata: `IBM Plex Mono`, system monospace.
+Do not alter hooks, calculations, APIs, permissions, Supabase, Stripe, WhatsApp,
+subscriptions, stored data or authentication. Browser QA uses isolated mocked
+network responses, not live financial writes. Record what is simulated versus
+actually verified. Historical eager app-bundle performance debt remains visible
+in measurements; no unrequested backend or routing rewrite to chase scores.
+Financial page bundles are lazy-loaded inside the existing dashboard Outlet,
+with an accessible loading state and navigation retained while loading. Route
+paths, protection and financial hooks are unchanged; charts and checkout code
+must not block the login screen.
+React diagnostics stay installed and development-only, enabled via ?diagnostics
+so their overlays never cover ordinary local previews or enter production.
+The routed redesign-skill.md is absent locally; use the existing contracts,
+frontend-design and measured browser review instead. Public Site is unchanged.
 
-### Scale
+## Auth Paper Edition (2026-09-20)
 
-| Level | Size | Weight | Line height | Usage |
-| --- | --- | --- | --- | --- |
-| Display | `clamp(3rem, 8vw, 7.5rem)` | 600 | 0.9 | Landing and editorial balance only |
-| H1 | `clamp(2rem, 4vw, 3.75rem)` | 600 | 0.98 | Page title and primary statements |
-| H2 | `1.375rem` | 600 | 1.25 | Major panel title |
-| H3 | `1rem` | 650 | 1.35 | Compact panel title |
-| Value XL | `clamp(3rem, 8vw, 6.5rem)` | 600 | 0.9 | Editorial balance |
-| Value | `1.375rem` | 650 | 1.1 | Metric values |
-| Body | `0.9375rem` | 400 | 1.55 | Default product copy |
-| Body small | `0.8125rem` | 450 | 1.45 | Metadata and supporting copy |
-| Label | `0.75rem` | 650 | 1.3 | Controls and compact labels |
+Scope: the existing `/auth` login/signup surface only. `/signup` remains its
+existing redirect alias. No Supabase, session, OAuth, validation, subscription,
+onboarding, invitation, or financial behavior changes.
 
-### Rules
+Reference: user-supplied `b4492ab0d444891b66419c4717283b4f.jpg`. Preserve its
+mineral-white paper, layered sculptural cutouts, directional soft shadows,
+quiet left-hand form and dark green depth. Replace foliage with original
+receipts, a calendar and category columns. The image is decorative, not a
+financial statement or a promise of returns. The existing dark app is unchanged.
 
-- Fraunces owns display statements and major page headings; it never appears in dense tables.
-- IBM Plex Mono owns financial values, dates, ratios, and compact metadata.
-- Letter spacing is `0`; hierarchy comes from weight, size, and whitespace.
-- Body text never drops below 13px.
-- Long titles wrap naturally and never use viewport-scaled font sizes.
+- Local tokens: paper #F7F8F7, ink #1B302B, secondary #596761, accent #214C40,
+  divider #CBD3CE, input outline #809087, white #FFFFFF. Coral/ice/champagne live only in the artwork.
+- Geist remains the font. Heading 36px desktop / 30px narrow; body 15px;
+  labels 13px; metadata 12px. Letter spacing stays zero.
+- Layout follows the [StyleGallery cover pattern](https://github.com/changeroa/StyleGallery/blob/main/patterns/viewport-shell/cover.md):
+  header, flexible main, footer; document owns scroll; no fixed-height clipping.
+  Form width 380px, left half on wide screens, full available width on narrow
+  screens. A full-bleed background connects the form and the paper sculpture.
+- Below 900px the artwork becomes a shallow top band and the form sits below
+  it on a legible white sheet. No nested card, mockup frame, or horizontal scroll.
+- Reuse Logo, InputField, SocialLoginButton and Button. All palette overrides
+  are scoped to `.auth-paper`. Input/command radius 8px, controls at least 48px,
+  icon targets at least 44px. Password visibility uses a named icon button.
+- Keep both modes, Google OAuth, loading/error toasts, form values on mode
+  change, safe `next`, login session redirect, signup storage and onboarding.
+  Do not add fake password recovery, Microsoft, Facebook or new auth endpoints.
+- Motion: existing 140/220ms color/focus feedback only; no ambient or scroll
+  animation. Loading icon stops rotating with reduced motion. Artwork has an
+  opaque light-canvas fallback; meaningful text and controls are real HTML.
+- Accessibility: persistent associated labels, correct autocomplete, visible
+  keyboard focus, 200% text reflow, decorative image alt empty, no focus-order
+  changes. Native form validation and existing toast reporting are retained.
+- QA: real browser login/signup at 320,375,768,1440,1920; password visibility,
+  keyboard, mode/value retention, mocked submit/OAuth/error/loading/redirects;
+  production build, TS, lint, unit regressions, measured performance.
+- Reference limitation: the routed image-to-code-skill.md is absent from the
+  installed skill. The supplied image and this explicit contract replace it.
+- Accepted debt: existing app-wide eager bundle and auth backend configuration
+  are outside this presentation change. Never report live OAuth/account creation
+  as tested when only SDK mocks were used.
 
-## 4. Spacing & Layout
 
-### Spacing
+Organizze is reconstructed through the product-first rhythm, precise geometry, long quiet intervals, and controlled depth observed in the supplied Basedash reference. Organizze keeps its own financial meaning, original brand, routes, handlers, data contracts, permissions, and commercial behavior.
 
-The base unit is 4px. Product spacing uses `4, 8, 12, 16, 20, 24, 32, 40, 48, 64`.
+The existing Invisible Ledger implementation remains the behavior-preserving base: this contract replaces its obsolete visual direction without weakening its route, interaction, accessibility, or reduced-motion guarantees.
 
-### Application Shell
+The public narrative follows four connected facts: Organizze gathers expenses from manual entries, receipts, recurring rules, and WhatsApp; organizes what the customer sends; shows how much remains available to spend; and surfaces limits and future commitments before they become surprises. Public copy must avoid absolute financial guarantees.
 
-- Desktop: fixed 232px side navigation, compact utility header, and one scrolling main region.
-- Tablet: collapsed icon rail or drawer; main content remains the only scroll owner.
-- Mobile: compact top header plus five-item bottom navigation; secondary destinations live in a menu sheet.
-- Full-height shells use `100dvh` and `min-height: 0` on the scrolling child.
-- Main content width is capped at 1280px with responsive gutters of 16px, 24px, and 32px.
-- Repeated content grids use `repeat(auto-fit, minmax(min(16rem, 100%), 1fr))`.
+The visual foundation is deep black and white with semantic blue, green, coral, and amber. Lighting remains attached to real product surfaces or data states. Do not use decorative gradient blobs, bokeh orbs, glassmorphism, a gradient hero background, nested decorative cards, or generic dashboard-card grids.
 
-### Page Grammar
+**2026-09-17 reference correction.** The user rejected the flat interpretation and requested the supplied image/video's actual composition and movement. This supersedes the previous generic section geometry: use a 1040 px public column, a transparent compact header, a monochrome dashboard behind the centered opening statement, regular-weight 40/52 px display type, narrow 520 px text measures, long black intervals, luminous tab hairlines, an illuminated interpretation surface, source marks converging into the original Organizze mark, a metallic gold trial surface, alternating detail bands, a Three.js financial close and a pixel-resolving wordmark. Content and actions remain Organizze's. No new services, screens, testimonials or integrations are introduced.
 
-Every product page follows: editorial header, one dominant financial statement, supporting rail or compact controls, detailed evidence, then secondary actions. Use `main-with-rail` when a decision summary meaningfully supports the main data. Pages do not begin with a uniform card grid.
+Reference-specific public primitives: `.reference-heading` (centered title/copy); `.reference-surface` (one inspectable tool, 6 px radius, hairline); `.reference-band` (unframed full-width feature row); `PixelReveal` (readable DOM text with a one-shot canvas pixel assembly overlay); `FinancialScene` (lazy Three.js chart scene with static fallback, bounded pixel ratio and disposal). Use real vector charts and original generated chart geometry, not a screenshot of Basedash.
 
-## 5. Components
+Public finish tokens extend, not replace, the semantic product palette: neutral canvas `#030303`, panel `#090909`, outline `#232323`, neutral text `#F1F1F1`, muted `#A0A0A0`; interpretation-only violet `#BBA0FF`; trial metal `#E4B654` with highlight `#FFE8A3` and shaded material `#493512`. White controls replace blue marketing CTAs. Accents belong to interpreted data, status, chart series or the metallic trial object; no gradient hero background.
 
-### App Shell
+## Brand Mark
 
-- **Structure**: fixed navigation + utility header + scrollable main + mobile bottom navigation.
-- **States**: expanded, collapsed, mobile drawer, active destination.
-- **Accessibility**: labeled navigation landmarks, current-page state, keyboard-reachable menu.
-- **Motion**: 180ms opacity/transform transitions; reduced-motion path is immediate.
+The original Organizze mark represents dispersed financial entries converging into one ordered balance.
 
-### Page Header
+- Build the silhouette from a compact grid or ledger of four to seven geometric cells.
+- Outer cells suggest multiple sources; central alignment suggests organization.
+- One controlled interruption or open cell suggests movement and incoming data.
+- The silhouette must remain identifiable at 16 px and work in one color.
+- It must not resemble the Basedash hash mark, WhatsApp mark, bank logos, a crypto token, or an abstract letter `O` alone.
+- The wordmark remains `Organizze` and uses the approved neo-grotesk family.
+- An original SVG is permitted for the mark because it is a brand asset, not a substitute for a familiar interface icon.
 
-- **Structure**: title, one-line context, optional period control, primary action.
-- **Variants**: standard, period-aware, compact mobile.
-- **Layout**: cluster that wraps before actions collide with titles.
+## Color And Meaning
 
-### Metric Strip
+| Token | Value | Meaning |
+| --- | --- | --- |
+| Page canvas | `#050505` | Near-black public and product foundation |
+| Raised product surface | `#0B0C0E` | Elevated product stages and shell surfaces |
+| Functional panel | `#111316` | Owned tools, metrics, dialogs, and data regions |
+| Hairline structure | `#24272C` | Predominantly 1 px borders and dividers |
+| Primary text | `#F5F7FA` | Headings, values, and primary labels |
+| Secondary text | `#8E949D` | Supporting copy and metadata |
+| Intelligence blue | `#69D7FF` | Interpretation, context, and active intelligence |
+| Income/safe | `#66DFA6` | Income and safe status only |
+| Expense/destructive | `#FF7C6B` | Expense and destructive status only |
+| Warning | `#F4C56A` | Warning and approaching-limit status only |
 
-- **Structure**: label, tabular value, comparison or status.
-- **Variants**: neutral, income, expense, warning.
-- **States**: loading skeleton, unavailable, negative, positive.
-- **Rule**: the first metric may become an editorial balance; supporting metrics sit on ruled lines, never a uniform four-card row.
+Depth comes from scale, occlusion, controlled shadow, opacity, filter, panel contrast, and subtle raster texture. Product panels use 4-8 px corner radii, borders are predominantly 1 px hairlines, and pill-shaped text containers are reserved for semantic pills, tags, and statuses. Status is never communicated by color alone.
 
-### Data Panel
+## Typography
 
-- **Structure**: header, optional controls, body, footer action.
-- **Variants**: chart, list, table, allocation, empty.
-- **Depth**: white surface, crisp border, radius 8px, no nested cards.
-- **States**: loading, empty, error, filtered-empty, populated.
+The target character is the precise, wide, neo-grotesk feeling of the reference.
 
-### Financial Row
+- Display and body: Geist Sans or a verified redistributable equivalent, with robust system fallbacks.
+- Financial and utility values: Geist Mono or a verified equivalent.
+- Product values use tabular lining numerals.
+- Headlines use controlled line breaks and balanced width, never viewport-width font scaling.
+- Interface labels remain at least 12 px.
+- Body text remains at least 15 px on public surfaces and 14 px in dense product contexts.
+- Letter spacing is zero for normal text and non-negative for utility uppercase labels.
+- Fonts are self-hosted or bundled; preload only the required initial weights.
 
-- **Structure**: semantic icon, description, metadata, amount, optional row action.
-- **Variants**: transaction, category, member, goal.
-- **Accessibility**: row action has a visible label or tooltip and does not make the whole row ambiguously clickable.
+Public locale resolution uses this priority: an explicit stored or user selection first, then the browser language, then the current project fallback. Automatic detection must never overwrite a manual choice.
 
-### Controls
+## Public Scene Contract
 
-- Buttons use familiar Lucide icons where the project already depends on Lucide.
-- Primary buttons are compact sage rectangles with radius 6px.
-- Segmented controls represent modes; switches represent binary settings; menus represent option sets.
-- Every icon-only action has a tooltip and accessible name.
+The landing contains these eleven scenes in this order, revised on 2026-09-17 to follow the supplied page composition. The reference controls rhythm and composition; Organizze controls meaning and content. Public content uses a 1040 px inner maximum inside a 1120 px container, while product stages may extend beyond the content column without creating horizontal page overflow.
 
-### Empty and Guidance States
+| ID | Scene job | Required composition and content |
+| --- | --- | --- |
+| `prelude` | Establish product quality before the value proposition. | A layered Organizze dashboard occupies the upper viewport and shows available amount, spending rhythm, category allocation, and upcoming commitments. The header contains the new mark and wordmark, `Entrar`, and `Começar 15 dias grátis`. The first viewport reveals a hint of `promise`. |
+| `promise` | Explain consolidation and available amount. | Center the headline `Tudo o que gastas, organizado. O que podes gastar, claro.` with its PT-BR adaptation, plain-language supporting copy, primary CTA `Começar 15 dias grátis`, and `Ver como funciona` scrolling to the product explanation. |
+| `month` | Make one complete month inspectable. | A large monthly dashboard supports tabs for month overview, categories, commitments, and goals. Plausible demonstration figures are clearly non-personal, internally consistent, and accompanied by textual summaries. |
+| `whatsapp` | Show financial input becoming a decision. | Present `message or receipt -> interpretation -> category -> transaction -> updated available amount`. Do not use WhatsApp bubbles, a chat transcript, read receipts, or a copied WhatsApp shell. |
+| `available` | Answer what can be spent. | The available amount dominates. Expected income, committed costs, variable spending, and reserved goals explain the calculation without claiming certainty when data is incomplete. |
+| `sources` | Show every expense becoming one ledger. | Five actual input methods surround the original Organizze mark, with the consolidated month total and available amount below. This is not an integrations logo wall. |
+| `plans` | Present current commercial choices in one stage. | A metallic trial pass introduces the existing 15-day trial. Both real plans remain visible, with checkout pricing, lifetime entitlement and test-mode notes unchanged. |
+| `future` | Surface commitments before they surprise the customer. | Upcoming subscriptions, recurring expenses, category limits, and factual warning states distinguish within limit, approaching limit, and exceeded without alarmist language. |
+| `planning` | Connect plans, goals, and shared spaces. | A staged product montage uses progressive disclosure to connect budgets, scenarios, goals, and household spaces through real interface surfaces rather than a feature-card grid. |
+| `trust` | Explain system quality without unsupported claims. | Concise evidence covers privacy boundaries, private receipt storage, user-controlled spaces, and clear account ownership. Do not claim unverified certifications or security properties. |
+| `signature` | Close with a monumental Organizze moment. | `É tempo de ver o mês antes que ele aconteça.` and the exact primary CTA introduce a real Three.js financial graph with accessible static fallback, followed by the large-format Organizze wordmark. |
 
-- **Structure**: restrained icon, direct statement, one explanatory sentence, one action.
-- Guidance may use Newsreader for the statement.
-- No emojis, fake data, decorative blobs, or illustrations that obscure the workflow.
+Public demonstration values live in static presentation fixtures, separate from hooks that read customer data. They never contain real names, phones, receipts, emails, space IDs, or transaction IDs. Protected pages never fall back to demo data when live data is unavailable.
 
-### Primitive Showcase
+## Product Shell Contract
 
-Before product screens are migrated, the implementation must provide a temporary internal showcase covering button, input, badge, metric, data panel, financial row, empty state, navigation item, and their required states at 375px, 768px, and 1280px.
+Desktop replaces the visible 228 px sidebar with a stable top product bar containing the Organizze mark and wordmark, current section or breadcrumb, space selector, month context where relevant, global quick-add transaction action, navigation menu trigger, and account or subscription trigger.
 
-## 6. Motion & Interaction
+The full navigation panel preserves every existing destination, grouping, and permission rule. It supports Escape, traps focus when modal, restores focus to the trigger, and exposes the same route destinations and permission behavior as the current shell.
 
-| Type | Duration | Easing | Usage |
-| --- | --- | --- | --- |
-| Micro | 140ms | ease-out | Press, checkbox, compact feedback |
-| Standard | 220ms | cubic-bezier(0.16, 1, 0.3, 1) | Menu, tooltip, selected state |
-| Panel | 320ms | cubic-bezier(0.16, 1, 0.3, 1) | Drawer and dialog |
-| Editorial reveal | 520ms | cubic-bezier(0.16, 1, 0.3, 1) | Hero copy and primary financial statement |
+Mobile keeps exactly five stable primary destinations in the bottom navigation, each with an icon and compact visible label. Full route access remains available through the menu, safe-area insets are respected, and labels do not truncate at 375 px.
 
-- Motion communicates state or spatial continuity only.
-- Animate `transform` and `opacity`; avoid animated layout properties.
-- Hover never becomes the only way to discover an action.
-- `prefers-reduced-motion` disables non-essential transitions.
-- Numeric changes follow the beui.dev `number` mechanism: interpolate from the previous value; reduced motion snaps immediately.
-- Navigation follows `shared-layout-bg` conceptually through a retargetable CSS transform/opacity marker; no motion dependency is added.
-- Loading uses skeletons with restrained opacity, not looping decorative motion.
+Daily-use pages begin with context and the primary decision, then supporting evidence. Use wide data bands and framed tools instead of decorative card grids. Tables retain desktop density and become purposeful mobile rows. Charts preserve color meaning, tooltips, textual summaries, filters, month selection, and mutation feedback.
 
-## 7. Depth & Surface
+Authentication and onboarding retain one decision per screen. All existing fields, providers, validation, storage, routes, timers, polling, skip, reconnect, progress, OAuth consent, invitation acceptance, and error behavior remain unchanged.
 
-The strategy is **paper, ink, and deliberate print depth**.
+## Motion
 
-- Canvas, surface, and quiet surface create three levels.
-- Default panels use one 1px ink-tinted border. Featured paper panels may use a 3px offset ink shadow to feel printed, never floating.
-- One ink panel per viewport may invert the palette for decisions or calls to action.
-- Menus and dialogs may use one diffuse shadow below 8% opacity.
-- No gradients, glassmorphism, glowing borders, blurred blobs, nested cards, or soft generic elevation.
-- Radius is 6px for controls and 8px for panels; pills are reserved for compact statuses.
+Landing motion uses the GSAP and ScrollTrigger dependencies already present in the project. Product motion remains fast and state-driven.
 
-## 8. Accessibility Constraints & Accepted Debt
+- Allowed public mechanisms: timeline-based panel entrance; scroll-linked opacity, filter, and transform; pinned public scenes when content remains fully reachable; perspective and `translate3d` for product-stage depth; clip-path reveal only when verified smooth with a non-animated fallback; and staggered data rows when they communicate assembly or consolidation.
+- Animate transform, opacity, and filter rather than layout dimensions or document flow.
+- Do not add continuous decorative loops.
+- Every sequence has a `prefers-reduced-motion` path.
+- Motion never delays navigation, input, or access to content.
+- Mobile retains narrative order while reducing pinning, depth, and simultaneous layers.
+- Landing motion remains code-split away from authenticated routes.
+- Product navigation and dialogs use 140-220 ms state transitions.
+- Financial result changes may cross-fade or roll only when the value genuinely changes.
+- Authenticated routes have no scroll hijacking, cinematic pinning, parallax, custom cursor, or ambient animation.
+- Loading indicators stop when work stops.
 
-### Constraints
+Reference fidelity motion: pixel assembly completes once in 900 ms without delaying links; scene entrances last 700-1000 ms with `power3.out`; dashboard panels and source rows have 80 ms stagger; chart drawing and context consolidation track native scroll with scrub 0.6; material reflections follow pointer position and reset on leave; the closing financial scene uses Three.js for shallow depth and restrained camera movement. Pause canvas work outside the viewport and on document visibility changes; reduced motion renders the final static state. Decorative perpetual loops remain prohibited. beui's text-animation/tab mechanisms inform state transitions; pixel assembly and financial geometry are project-specific mechanisms grounded in the supplied video.
 
-- WCAG 2.2 AA: 4.5:1 body contrast, 3:1 large text and UI boundaries.
-- Visible focus on every interactive control.
-- Minimum touch target is 44px on mobile.
-- Complete keyboard access for navigation, menus, dialogs, filters, and tables.
-- Financial meaning is never color-only.
-- Charts provide a textual summary and accessible labels.
-- Content survives 200% zoom, long Portuguese labels, empty states, and unbroken values.
+## Responsive And Accessibility
 
-### Accepted Debt
+Required widths are 375, 768, and 1280 px. Also verify an effective 1280 x 450 viewport or 200% zoom for top-navigation and menu access.
 
-| Item | Location | Why accepted | Exit |
-| --- | --- | --- | --- |
-| Existing product copy may need a dedicated content pass | Legacy onboarding and diagnostic routes | This redesign prioritizes workflow clarity and visual consistency | Review copy during each route migration |
-| Light theme ships first | Entire application | User selected the clear direction; dark tokens remain documented for later | Complete dark-theme visual QA in a separate pass |
+- Meet WCAG AA contrast for text and controls.
+- Use a minimum practical target of 44 x 44 px.
+- Show visible focus on every interactive element.
+- Modal interactions trap focus, close on Escape, and restore focus.
+- Preserve semantic landmarks and logical heading order.
+- Provide text summaries for charts.
+- Never communicate status by color alone.
+- Keep currency and long Portuguese labels inside their containers.
+- Prevent horizontal document overflow.
+- Keep all public scenes on mobile; stack compositions instead of shrinking them into illegible thumbnails.
+- Drive and verify reduced motion in a real browser for representative public and product flows.
+
+Performance boundaries are CLS below 0.1 and LCP below 2.5 s on the measured local production profile where tooling permits. Public motion and heavy visual code remain route-isolated, font and hero preloads stay conservative, no preloader holds usable content, and interaction feedback remains visually immediate.
+
+## Functional Preservation
+
+The visual reconstruction must not alter any behavior or data contract. Existing hooks and handlers remain the source of truth. Presentation components receive values and callbacks through props. Animation modules cannot perform financial, authorization, payment, or messaging work.
+
+Every declared route retains its current routing behavior:
+
+- `/__design-system` - development-only primitive showcase; it is registered only when `import.meta.env.DEV` is true and is absent from production routing.
+- `/` - public landing page.
+- `/.lovable/oauth/consent` - OAuth consent route.
+- `/auth` - authentication route.
+- `/signup` - redirect alias that replaces browser history and resolves to `/auth`.
+- `/convite` - invitation acceptance route.
+- `/onboarding/nome` - protected onboarding route.
+- `/onboarding/idioma` - protected onboarding route.
+- `/onboarding/moeda` - protected onboarding route.
+- `/onboarding/whatsapp` - protected onboarding route.
+- `/onboarding/whatsapp/verificar` - protected onboarding route.
+- `/dashboard` - protected dashboard shell and index route.
+- `/dashboard/lancamentos` - protected nested dashboard route.
+- `/dashboard/relatorios` - protected nested dashboard route.
+- `/dashboard/limite-de-gastos` - protected nested dashboard route.
+- `/dashboard/orcamento` - protected nested dashboard route.
+- `/dashboard/planos` - protected nested dashboard route.
+- `/dashboard/objetivos` - protected nested dashboard route.
+- `/dashboard/grupos` - protected nested dashboard route.
+- `/dashboard/whatsapp` - protected nested dashboard route.
+- `/dashboard/diagnostico-whatsapp` - protected nested dashboard route.
+- `/dashboard/assinatura` - protected nested dashboard route.
+- `*` - catch-all fallback that renders the 404 `NotFound` page for every unmatched path.
+
+Also preserve OAuth consent, invitation acceptance, 404, checkout overlay, dialogs, menus, tooltips, toasts, loading, empty, error, free, trial, paid, lifetime, test-mode, pending, expired, disconnected, and active states.
+
+The following boundaries are immutable:
+
+- Route paths, redirects, protected-route rules, query parameters, and invitation-token behavior.
+- Authentication providers, Supabase sessions, user creation, and email behavior.
+- Supabase schemas, RLS, RPC names and arguments, data ownership, grants, and migrations.
+- Financial calculations, date periods, category mapping, filtering, CRUD semantics, recurring behavior, imports, and totals.
+- WhatsApp connection, linking, instance identity, phone normalization, message ingestion, receipt processing, media handling, job processing, retries, monthly reports, and bridge behavior.
+- Subscription eligibility, 15-day trial, paid access, test mode, Stripe synchronization, checkout, and lifetime entitlement.
+- Form validation, disabled and loading behavior, error semantics, toasts, and recovery destinations.
+- Navigation destinations and labels, permission checks, shared-space membership, invitations, roles, pending and expired states, and account ownership.
+
+No secrets, service-role keys, bridge secrets, payment keys, or private storage paths may enter the browser bundle.
+
+## Landing Approval Gate
+
+Delivery proceeds in this checkpoint order:
+
+1. Reference contract and brand foundation: extract representative frames and timecodes, record visual and responsive assumptions, approve the original Organizze symbol, and lock this contract with tests.
+2. Landing: implement all eleven scenes and responsive variants, then present the local landing for explicit user approval before changing entry or protected screens.
+3. Entry and onboarding: apply the approved system to auth, OAuth, invitations, name, language, currency, WhatsApp connection, and verification states.
+4. Shell and dashboard: replace the visual sidebar with the top bar and navigation panel while preserving every destination and account behavior.
+5. Financial pages: reconstruct transactions, reports, budget, plans, limits, and goals while exercising all mutations, filters, tooltips, month changes, and recalculated states.
+6. Commercial and automation pages: reconstruct spaces, WhatsApp, diagnostics, subscription, checkout, and entitlement states.
+7. Final gate: run the full automated suite, exact TypeScript, build, lint, React diagnostics, real-browser route matrix, reduced motion, 200% zoom, performance measurements, and independent review.
+
+Landing approval is scene-based rather than literal pixel equality. For every scene, compare relative headline, product-surface, and negative-space scale; product-first hierarchy; alignment and border geometry; layer depth and controlled lighting; scroll timing and reveal order; CTA placement and prominence; and mobile preservation of the same narrative job.
+
+Approval fails if the result merely combines a black background with generic dashboard cards. The defining rhythm is the product prelude, centered editorial promise, large inspectable stages, long quiet intervals, precise motion, and monumental closing brand moment.
+
+Accepted constraints: different product content prevents literal pixel equality; original Organizze panels replace Basedash screenshots and database concepts; a redistributable font equivalent may replace the reference font; unavailable authenticated or external state is recorded rather than silently passed; and pre-existing main-bundle size remains separate debt unless this reconstruction worsens it.

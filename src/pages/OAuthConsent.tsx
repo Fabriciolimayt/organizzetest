@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import Logo from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -83,19 +84,24 @@ const OAuthConsent = () => {
 
   if (error) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 bg-app-bg">
-        <div className="max-w-md w-full bg-card rounded-2xl shadow-lg p-8 space-y-2">
-          <h1 className="text-xl font-bold text-foreground">Não foi possível carregar</h1>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </div>
+      <main className="flex min-h-[100dvh] items-center justify-center bg-app-bg px-5 py-10">
+        <section className="functional-panel w-full max-w-md p-6 sm:p-8" aria-labelledby="oauth-error-heading">
+          <Logo size="sm" />
+          <h1 id="oauth-error-heading" className="editorial-display mt-8 text-2xl font-semibold text-foreground">Não foi possível carregar</h1>
+          <p role="alert" className="mt-3 text-sm leading-6 text-muted-foreground">{error}</p>
+        </section>
       </main>
     );
   }
 
   if (!details) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 bg-app-bg">
-        <p className="text-muted-foreground">A carregar…</p>
+      <main className="flex min-h-[100dvh] items-center justify-center bg-app-bg px-5 py-10">
+        <section className="functional-panel w-full max-w-md p-6 sm:p-8" aria-live="polite">
+          <Logo size="sm" />
+          <p className="mt-8 font-mono text-[11px] font-semibold uppercase text-data-blue">Autorização segura</p>
+          <p className="mt-3 text-sm text-muted-foreground">A carregar…</p>
+        </section>
       </main>
     );
   }
@@ -103,15 +109,19 @@ const OAuthConsent = () => {
   const clientName = details.client?.name ?? "Uma aplicação externa";
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-app-bg">
-      <div className="max-w-md w-full bg-card rounded-2xl shadow-lg p-8 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Ligar {clientName} à Organizze</h1>
-          <p className="text-sm text-muted-foreground">
-            Isto permite que {clientName} aceda às tuas despesas e crie novas em teu nome, usando a tua conta Organizze.
+    <main className="flex min-h-[100dvh] items-center justify-center bg-app-bg px-5 py-10">
+      <section className="functional-panel w-full max-w-md p-6 sm:p-8" aria-labelledby="oauth-consent-heading">
+        <Logo size="sm" />
+        <div className="mt-8">
+          <p className="font-mono text-[11px] font-semibold uppercase text-data-blue">Autorização segura</p>
+          <h1 id="oauth-consent-heading" className="editorial-display mt-3 text-2xl font-semibold leading-tight text-foreground">
+            Ligar {clientName} à Organizze
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            {clientName} poderá aceder às tuas despesas e criar novas em teu nome, usando a tua conta Organizze.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
           <Button onClick={() => decide(true)} disabled={busy} size="lg" className="flex-1">
             {busy ? "A processar…" : "Aprovar"}
           </Button>
@@ -119,7 +129,7 @@ const OAuthConsent = () => {
             Recusar
           </Button>
         </div>
-      </div>
+      </section>
     </main>
   );
 };

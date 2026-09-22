@@ -19,15 +19,16 @@ const SelectableCard = ({
   <button
     type="button"
     onClick={onClick}
-    className={`relative w-full text-left rounded-2xl transition-all p-4 backdrop-blur-xl border ${
+    aria-pressed={selected}
+    className={`focus-ring interactive-control relative min-h-16 w-full rounded-md border px-4 py-3 text-left ${
       selected
-        ? "border-primary/60 bg-gradient-to-br from-primary/15 to-primary/5 shadow-[0_0_30px_-8px_hsl(var(--primary)/0.5)]"
-        : "border-[hsl(var(--glass-border))] bg-[hsl(var(--glass-bg))] hover:border-primary/40 hover:bg-[hsl(var(--glass-highlight))]"
+        ? "border-primary/70 bg-primary/10"
+        : "border-border bg-card hover:border-foreground/45 hover:bg-muted/55"
     } ${layout === "vertical" ? "flex flex-col items-center text-center" : "flex items-center gap-4"} ${className}`}
   >
     {selected && (
-      <span className="absolute top-3 right-3 w-6 h-6 rounded-full btn-gradient flex items-center justify-center">
-        <Check size={14} strokeWidth={3} />
+      <span className="absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-primary bg-primary text-primary-foreground">
+        <Check size={14} strokeWidth={3} aria-hidden="true" />
       </span>
     )}
     {children}

@@ -8,14 +8,36 @@ interface MonthSelectorProps {
   disableNext?: boolean;
 }
 
-const MonthSelector = ({ month = "Março 2026", className = "", onPrevious, onNext, disableNext = false }: MonthSelectorProps) => (
-  <div className={`flex items-center justify-center gap-2 ${className}`}>
-    <button type="button" aria-label="Mês anterior" title="Mês anterior" onClick={onPrevious} disabled={!onPrevious} className="focus-ring interactive-control flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40">
-      <ChevronLeft size={20} />
+const MonthSelector = ({
+  month = "Março 2026",
+  className = "",
+  onPrevious,
+  onNext,
+  disableNext = false,
+}: MonthSelectorProps) => (
+  <div className={`flex min-w-0 items-center justify-center gap-2 ${className}`}>
+    <button
+      type="button"
+      aria-label="Mês anterior"
+      title="Mês anterior"
+      onClick={onPrevious}
+      disabled={!onPrevious}
+      className="focus-ring interactive-control flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:border-foreground/35 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      <ChevronLeft size={16} />
     </button>
-    <span className="min-w-[140px] text-center text-base font-semibold text-foreground">{month}</span>
-    <button type="button" aria-label="Mês seguinte" title="Mês seguinte" onClick={onNext} disabled={!onNext || disableNext} className="focus-ring interactive-control flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40">
-      <ChevronRight size={20} />
+    <span className="min-w-32 select-none truncate text-center text-body-small font-semibold text-foreground sm:min-w-36">
+      {month}
+    </span>
+    <button
+      type="button"
+      aria-label="Mês seguinte"
+      title="Mês seguinte"
+      onClick={onNext}
+      disabled={!onNext || disableNext}
+      className="focus-ring interactive-control flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:border-foreground/35 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      <ChevronRight size={16} />
     </button>
   </div>
 );
