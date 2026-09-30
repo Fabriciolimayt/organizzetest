@@ -1,6 +1,15 @@
 /* The application shares the public site's identity, not its marketing layout. */
+@font-face {
+  font-family: "Manrope Variable";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");
+}
+
 :root {
   --font-editorial: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-brand: "Manrope Variable", sans-serif;
   --page-canvas: 180 10% 96%;
   --surface-raised: 180 11% 93%;
   --surface-functional: 0 0% 100%;
@@ -36,15 +45,44 @@ html { color-scheme: light; }
 body { background: hsl(var(--background)); }
 .focus-ring:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 
+.organizze-brand {
+  --brand-mark-size: 23px;
+  --brand-mark-gap: 3px;
+  --brand-wordmark-size: 19px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.organizze-brand--sm {
+  --brand-mark-size: 18px;
+  --brand-mark-gap: 2px;
+  --brand-wordmark-size: 15px;
+}
+.organizze-brand--lg {
+  --brand-mark-size: 28px;
+  --brand-mark-gap: 3px;
+  --brand-wordmark-size: 23px;
+}
+.organizze-brand__mark {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  flex: none;
+  width: var(--brand-mark-size);
+  height: var(--brand-mark-size);
+  gap: var(--brand-mark-gap);
+  transform: rotate(-9deg);
+}
+.organizze-brand__mark i { background: currentColor; border-radius: 1px; }
+.organizze-brand__mark i:nth-child(2) { opacity: .55; }
+.organizze-brand__mark i:nth-child(3) { opacity: .75; }
 .brand-wordmark {
-  font-family: var(--font-editorial);
-  font-size: 1.75rem;
-  font-weight: 400;
-  line-height: 1.15;
+  font-family: var(--font-brand);
+  font-size: var(--brand-wordmark-size);
+  font-weight: 600;
+  line-height: 1;
   letter-spacing: 0;
 }
-.brand-wordmark[data-size="sm"] { font-size: 1.375rem; }
-.brand-wordmark[data-size="lg"] { font-size: 2rem; }
 .editorial-display { font-family: var(--font-editorial); font-weight: 400; }
 
 .product-shell { background: hsl(var(--background)); }
@@ -71,7 +109,6 @@ body { background: hsl(var(--background)); }
 .product-mobile-bar { flex-wrap: wrap; background: hsl(var(--sidebar-background)); color: hsl(var(--sidebar-foreground)); border-color: hsl(var(--sidebar-border)); }
 .product-mobile-bar .brand-wordmark,
 .product-mobile-bar [role="img"] { color: hsl(var(--sidebar-foreground)); }
-.product-mobile-bar [role="img"] svg { color: hsl(var(--sidebar-primary)); }
 .product-mobile-bar p { color: #a7b0b2; }
 .product-mobile-bar p:last-child { color: hsl(var(--sidebar-foreground)); }
 .product-mobile-nav a, .product-mobile-nav button { color: #a7b0b2; }

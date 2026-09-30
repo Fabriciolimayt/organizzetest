@@ -97,10 +97,7 @@ describe.each<PublicLocale>(["pt-PT", "pt-BR"])("public commercial scenes in %s"
     expect(signature).toHaveAccessibleName(getLandingCopy(locale).finalStatement);
     expect(within(signature).getByRole("heading", { level: 2, name: getLandingCopy(locale).finalStatement })).toBeInTheDocument();
     expect(signature.querySelector('[data-motion="signature-graph"] svg polyline')).not.toBeNull();
-    expect(signature.querySelector('[data-motion="signature-mark"] svg path')).toHaveAttribute(
-      "d",
-      "M3 4h6v4H3V4Zm12 0h6v4h-6V4ZM5 10h5v4H5v-4Zm9 0h5v4h-5v-4Zm-5 6h6v4H9v-4Z",
-    );
+    expect(signature.querySelectorAll('[data-motion="signature-mark"] .organizze-brand__mark i')).toHaveLength(4);
     expect(signature.querySelector('[data-motion="signature-wordmark"]')).toHaveTextContent("Organizze");
     expect(within(signature).getByText("Dados demonstrativos")).toBeInTheDocument();
   });

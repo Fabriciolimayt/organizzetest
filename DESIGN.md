@@ -23,8 +23,9 @@ financial data. Empty/loading/error states never impersonate populated data.
 - Primary command charcoal #182025, hover #303B40, white label. Data available
   #176874, income #246641, expense #A84234, future/warning #816022. Dark
   financial highlights use #82DCE3/#A8D6BA/#ED998B/#E0C28C with explicit labels.
-- Heading and wordmark: Iowan Old Style / Palatino Linotype / Georgia, regular.
-  Body and controls retain bundled Geist; financial values retain Geist Mono.
+- Headings: Iowan Old Style / Palatino Linotype / Georgia, regular. The brand
+  wordmark uses the Site's self-hosted Manrope Variable at weight 600. Body and
+  controls retain bundled Geist; financial values retain Geist Mono.
   Page heading 36px, mobile 30px; section 22px; body 15px, secondary 13px,
   labels 12px; primary metric 36px (30px narrow), support 24px (20px narrow).
   Zero tracking. No viewport-relative type, animated balances or uppercase prose.
@@ -51,6 +52,13 @@ light dialogs, popovers, menus and toasts using root-level semantic tokens so
 Radix portals inherit correctly. All retain default, focus, hover, disabled,
 loading, error, selected and destructive states. Validate the existing dev-only
 primitive showcase before reviewing full routes.
+
+The shared Logo reproduces the published Site brand: a four-cell square grid
+rotated -9 degrees, with the upper-right cell at 55% opacity and lower-left at
+75%, followed by the Manrope wordmark. Standard size is a 23px mark and 19px
+wordmark; compact is 18px/15px, with 10px between mark and text. The mark
+inherits the wordmark's light or dark color. Keep the same silhouette in the
+favicon and on standalone states, including the 404 page.
 
 Auth uses the original Site's optimized ledger poster with the same editorial
 identity, never the obsolete leaf/paper-cut composition. Form stays on opaque

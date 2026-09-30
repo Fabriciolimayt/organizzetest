@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { ArrowLeft, FileQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/Logo";
 
 const NotFound = () => {
   const location = useLocation();
@@ -13,6 +14,9 @@ const NotFound = () => {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-5 py-16 text-center">
       <div className="flex max-w-lg flex-col items-center">
+        <Link to="/" aria-label="Organizze: página inicial" className="focus-ring mb-8 inline-flex min-h-11 items-center rounded-md">
+          <Logo />
+        </Link>
         <div className="mb-6 flex size-12 items-center justify-center rounded-md border border-intelligence/35 bg-intelligence-wash text-intelligence">
           <FileQuestion aria-hidden="true" size={20} />
         </div>
